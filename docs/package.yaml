@@ -1,0 +1,29 @@
+name:                kuljet-docs
+version:             0.1.0.0
+github:              "KMahoney/kuljet"
+license:             BSD3
+author:              "Kevin Mahoney"
+maintainer:          "kevin@kevinmahoney.co.uk"
+copyright:           "2020 Kevin Mahoney"
+
+description:         A small, total HTTP/DB language
+
+dependencies:
+- base >= 4.7 && < 5
+
+ghc-options:
+- -Wall
+- -Werror
+
+executables:
+  kuljet-site-generator:
+    main:                site.hs
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - hakyll
+    - skylighting-core
+    - pandoc
+    - containers

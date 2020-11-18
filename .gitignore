@@ -1,0 +1,6 @@
+.stack-work/
+*~
+kuljet.cabal
+docs/_site/
+docs/_cache/
+*.kj.db

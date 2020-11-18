@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Kuljet</title>
+    <link rel="stylesheet" href="/css/default.css" />
+  </head>
+  <body>
+    <nav>
+      <ul>
+        <li>Guides</li>
+        <ul>$for(guides)$<li><a href="#$slug$">$title$</a></li>$endfor$</ul>
+        <li>Reference</li>
+        <ul>$for(references)$<li><a href="#$slug$">$title$</a></li>$endfor$</ul>
+        <li>Notes</li>
+        <ul>$for(notes)$<li><a href="#$slug$">$title$</a></li>$endfor$</ul>
+      </ul>
+    </nav>
+    <main role="main">
+
+      <section>
+        <h1>Kuljet</h1>
+        $intro$
+      </section>
+
+      <section>
+        <h1>Guides</h1>
+        $for(guides)$
+        <article id="$slug$" class="guide">
+          <h1>Guide: $title$</h1>
+          $body$
+        </article>
+        $endfor$
+      </section>
+
+      <section>
+        <h1>Reference</h1>
+        $for(references)$
+        <article id="$slug$" class="reference">
+          <h1>Reference: $title$</h1>
+          $body$
+        </article>
+        $endfor$
+      </section>
+
+      <section>
+        <h1>Notes</h1>
+        $for(notes)$
+        <article id="$slug$" class="note">
+          <h1>Note: $title$</h1>
+          $body$
+        </article>
+        $endfor$
+      </section>
+
+    </main>
+  </body>
+</html>

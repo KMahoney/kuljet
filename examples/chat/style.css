@@ -1,0 +1,26 @@
+body {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+}
+
+.messages {
+    flex-grow: 1;
+}
+
+.message {
+    border: 1px solid black;
+    border-radius: 1em;
+    padding: 1em;
+    margin-bottom: 0.5em;
+    box-shadow: 0.2em 0.2em 0.2em #0002;
+}
+
+.inputForm {
+    padding: 1em;
+    display: flex;
+}
+
+.inputMessage {
+    flex-grow: 1;
+}

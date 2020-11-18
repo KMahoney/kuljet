@@ -1,0 +1,48 @@
+name:                kuljet
+version:             0.1.0.0
+github:              "KMahoney/kuljet"
+license:             BSD3
+author:              "Kevin Mahoney"
+maintainer:          "kevin@kevinmahoney.co.uk"
+copyright:           "2020 Kevin Mahoney"
+
+description:         A small HTTP/DB language
+
+dependencies:
+- base >= 4.7 && < 5
+
+default-extensions:
+- OverloadedStrings
+- LambdaCase
+- MultiWayIf
+- NamedFieldPuns
+- TupleSections
+- DeriveGeneric
+
+ghc-options:
+- -Wall
+- -Werror
+
+executables:
+  kuljet:
+    main:                Main.hs
+    source-dirs:         src
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - optparse-applicative
+    - containers
+    - bytestring
+    - text
+    - mtl
+    - prettyprinter
+    - prettyprinter-ansi-terminal
+    - http-types
+    - wai
+    - wai-extra
+    - warp
+    - direct-sqlite
+    - unix
+    - time

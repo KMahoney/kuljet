@@ -1,0 +1,8 @@
+resolver: lts-16.18
+
+packages:
+- kuljet
+- docs
+
+extra-deps:
+- direct-sqlite-2.3.26@sha256:04e835402f1508abca383182023e4e2b9b86297b8533afbd4e57d1a5652e0c23,3718

@@ -1,0 +1,35 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: b3ea072f52e21f95eaff3c403734629d25edb7f5c79cfba169663f6afa5ad2fb
+
+name:           kuljet-docs
+version:        0.1.0.0
+description:    A small, total HTTP/DB language
+homepage:       https://github.com/KMahoney/kuljet#readme
+bug-reports:    https://github.com/KMahoney/kuljet/issues
+author:         Kevin Mahoney
+maintainer:     kevin@kevinmahoney.co.uk
+copyright:      2020 Kevin Mahoney
+license:        BSD3
+build-type:     Simple
+
+source-repository head
+  type: git
+  location: https://github.com/KMahoney/kuljet
+
+executable kuljet-site-generator
+  main-is: site.hs
+  other-modules:
+      Paths_kuljet_docs
+  ghc-options: -Wall -Werror -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , hakyll
+    , pandoc
+    , skylighting-core
+  default-language: Haskell2010

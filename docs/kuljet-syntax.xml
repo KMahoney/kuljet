@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<language name="kuljet" version="1" kateversion="2.4" section="Sources" extensions="*.kj">
+  <highlighting>
+    <list name="keywords">
+      <item>serve</item>
+      <item>get</item>
+      <item>post</item>
+      <item>in</item>
+      <item>fun</item>
+      <item>then</item>
+      <item>limit</item>
+      <item>order</item>
+      <item>asc</item>
+      <item>desc</item>
+      <item>select</item>
+      <item>where</item>
+    </list>
+    <list name="varKeywords">
+      <item>let</item>
+      <item>table</item>
+      <item>insert</item>
+    </list>
+    <contexts>
+      <context attribute="normal" lineEndContext="#pop" name="normal" >
+        <keyword attribute="keyword" context="#stay" String="keywords" />
+        <keyword attribute="keyword" context="var" String="varKeywords" />
+        <DetectChar attribute="string" context="string" char="&quot;" />
+      </context>
+      <context attribute="string" lineEndContext="#stay" name="string" >
+        <DetectChar attribute="string" context="#pop" char="&quot;" />
+      </context>
+      <context attribute="var" lineEndContext="#stay" name="var" >
+        <DetectChar attribute="normal" context="#pop" char="&lt;" />
+        <DetectIdentifier attribute="var" context="#pop" />
+      </context>
+    </contexts>
+    <itemDatas>
+      <itemData name="normal" defStyleNum="dsNormal" />
+      <itemData name="keyword" defStyleNum="dsKeyword" />
+      <itemData name="string" defStyleNum="dsString" />
+      <itemData name="var" defStyleNum="dsVariable" />
+    </itemDatas>
+  </highlighting>
+</language>

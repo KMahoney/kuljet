@@ -1,0 +1,255 @@
+module Kuljet.Stage.Norm
+  ( Module
+  , moduleEndpoints
+  , moduleTables
+
+    -- mimic the AST interface
+  , Endpoint(..)
+  , Exp(..)
+  , AST.Literal(..)
+  , AST.QOrder(..)
+  , Annotated(..)
+  , AST.Table(..)
+  , AST.BinOp(..)
+  
+  , normalise
+  ) where
+
+
+import qualified Data.Text as T
+import Data.List (intercalate)
+import RangedParsec.Pos (Located(..))
+import Network.HTTP.Types.Method (Method)
+
+import Kuljet.Stage.AST (Annotated(..))
+import qualified Kuljet.Stage.AST as AST
+
+
+-- Types common to all ASTs
+
+import Kuljet.Symbol
+import Kuljet.PathPattern
+import Kuljet.Type
+
+
+-- Normalised AST
+
+data Module =
+  Module { moduleEndpoints :: [Endpoint]
+         , moduleTables :: [AST.Table]
+         }
+  deriving (Show)
+
+
+data Endpoint =
+  Serve { serveMethod :: Method
+        , servePath :: Path
+        , serveExp :: Located Exp
+        }
+  deriving (Show)
+
+
+data Exp
+  = ExpVar (Located Symbol)
+  | ExpLiteral AST.Literal
+  | ExpApp (Located Exp) (Located Exp)
+  | ExpAbs (Annotated Symbol) (Located Exp)
+  | ExpList [Located Exp]
+  | ExpRecord [(Symbol, Located Exp)]
+  | ExpDot (Located Exp) (Located Symbol)
+  | ExpInsert (Located Symbol) (Located Exp) (Located Exp)
+  | ExpYield (Located Exp) (Located Exp)
+  | ExpQLimit (Located Exp) (Located Exp)
+  | ExpQOrder (Located Exp) (Located Exp) AST.QOrder
+  | ExpQSelect (Located Exp) (Located Exp)
+  | ExpQWhere (Located Exp) (Located Exp)
+  | ExpBinOp AST.BinOp (Located Exp) (Located Exp)
+
+instance Show Exp where
+  show =
+    \case
+      ExpVar (At _ sym) -> T.unpack (symbolName sym)
+      ExpLiteral (AST.LitStr s) -> "\"" ++ T.unpack s ++ "\""
+      ExpLiteral (AST.LitInt i) -> show i
+      ExpApp (At _ a) (At _ b) -> "(" ++ show a ++ " " ++ show b ++ ")"
+      ExpAbs sym (At _ a) -> "(fun " ++ T.unpack (annotatedSym sym) ++ " -> " ++ show a ++ ")"
+      ExpList elems -> "[" ++ intercalate "," (map show elems) ++ "]"
+      ExpRecord fields -> "{" ++ intercalate "," (map (\(sym, e) -> T.unpack (symbolName sym) ++ " = " ++ show e) fields) ++ "}"
+      ExpDot (At _ a) (At _ b) -> show a ++ "." ++ show b
+      ExpInsert (At _ sym) (At _ value) (At _ rest) -> "insert " <> T.unpack (symbolName sym) <> " " <> show value <> " then\n" <> show rest
+      ExpYield (At _ a) (At _ b) -> "(" ++ show a ++ " -> " ++ show b ++ ")"
+      ExpQLimit (At _ a) (At _ b) -> "(" ++ show a ++ " limit " ++ show b ++ ")"
+      ExpQOrder (At _ a) (At _ b) ord -> "(" ++ show a ++ " order " ++ show b ++ " " ++ showOrd ord ++ ")"
+      ExpQSelect (At _ a) (At _ b) -> "(" ++ show a ++ " select " ++ show b ++ ")"
+      ExpQWhere (At _ a) (At _ b) -> "(" ++ show a ++ " where " ++ show b ++ ")"
+      ExpBinOp AST.OpEq (At _ a) (At _ b) -> "(" ++ show a ++ " = " ++ show b ++ ")"
+
+    where
+      annotatedSym =
+        \case
+          Annotated {discardAnnotation = sym, annotation = Nothing} ->
+            symbolName sym
+          Annotated {discardAnnotation = sym, annotation = Just t} ->
+            symbolName sym <> " : " <> typeName t
+
+      showOrd =
+        \case
+          AST.OrderAscending -> "asc"
+          AST.OrderDescending -> "desc"
+
+
+normalise :: AST.Module -> Module
+normalise parsedModule =
+  Module (map normaliseDecl (AST.moduleEndpoints parsedModule)) (AST.moduleTables parsedModule)
+
+  where
+    normaliseDecl (AST.Serve { AST.serveMethod, AST.servePath, AST.serveExp }) =
+      Serve { serveMethod, servePath, serveExp = fmap (reduce . expand) serveExp }
+
+
+expand :: AST.Exp -> Exp
+expand =
+  \case
+    AST.ExpVar sym ->
+      ExpVar sym
+
+    AST.ExpLiteral lit ->
+      ExpLiteral lit
+
+    AST.ExpApp f a ->
+      ExpApp (fmap expand f) (fmap expand a)
+
+    AST.ExpAbs arg body ->
+      ExpAbs arg (fmap expand body)
+
+    AST.ExpLet sym a b ->
+      subst sym (expand (discardLocation a)) (expand (discardLocation b))
+
+    AST.ExpList elems ->
+      ExpList (map (fmap expand) elems)
+
+    AST.ExpRecord fields ->
+      ExpRecord (map (\(fs, fe) -> (fs, fmap expand fe)) fields)
+
+    AST.ExpDot r fieldName ->
+      ExpDot (fmap expand r) fieldName
+
+    AST.ExpParens subExp ->
+      expand subExp
+
+    AST.ExpInsert sym value next ->
+      ExpInsert sym (fmap expand value) (fmap expand next)
+
+    AST.ExpYield a b ->
+      ExpYield (fmap expand a) (fmap expand b)
+
+    AST.ExpQLimit a b ->
+      ExpQLimit (fmap expand a) (fmap expand b)
+
+    AST.ExpQOrder a b o ->
+      ExpQOrder (fmap expand a) (fmap expand b) o
+
+    AST.ExpQSelect a b ->
+      ExpQSelect (fmap expand a) (fmap expand b)
+
+    AST.ExpQWhere a b ->
+      ExpQWhere (fmap expand a) (fmap expand b)
+
+    AST.ExpBinOp op a b ->
+      ExpBinOp op (fmap expand a) (fmap expand b)
+
+
+subst :: Symbol -> Exp -> Exp -> Exp
+subst key value =
+  \case
+    ExpVar (At symSpan sym)
+      | sym == key -> value
+      | otherwise -> ExpVar (At symSpan sym)
+
+    ExpLiteral lit ->
+      ExpLiteral lit
+      
+    ExpApp f a ->
+      ExpApp (fmap (subst key value) f) (fmap (subst key value) a)
+      
+    ExpAbs sym absBody ->
+      ExpAbs sym (fmap (subst key value) absBody)
+      
+    ExpList elems ->
+      ExpList (map (fmap (subst key value)) elems)
+      
+    ExpRecord fields ->
+      ExpRecord (map (\(fs, fe) -> (fs, fmap (subst key value) fe)) fields)
+
+    ExpDot r fieldName ->
+      ExpDot (fmap (subst key value) r) fieldName
+
+    ExpInsert sym a b ->
+      ExpInsert sym (fmap (subst key value) a) (fmap (subst key value) b)
+
+    ExpYield a b ->
+      ExpYield (fmap (subst key value) a) (fmap (subst key value) b)
+
+    ExpQLimit a b ->
+      ExpQLimit (fmap (subst key value) a) (fmap (subst key value) b)
+
+    ExpQOrder a b ord ->
+      ExpQOrder (fmap (subst key value) a) (fmap (subst key value) b) ord
+
+    ExpQSelect a b ->
+      ExpQSelect (fmap (subst key value) a) (fmap (subst key value) b)
+
+    ExpQWhere a b ->
+      ExpQWhere (fmap (subst key value) a) (fmap (subst key value) b)
+
+    ExpBinOp op a b ->
+      ExpBinOp op (fmap (subst key value) a) (fmap (subst key value) b)
+
+
+reduce :: Exp -> Exp
+reduce =
+  \case
+    ExpVar sym ->
+      ExpVar sym
+
+    ExpLiteral lit ->
+      ExpLiteral lit
+      
+    ExpApp (At _ (ExpAbs annoSym a)) b ->
+      reduce (subst (discardAnnotation annoSym) (discardLocation b) (discardLocation a))
+
+    ExpApp f a ->
+      ExpApp (fmap reduce f) (fmap reduce a)
+      
+    ExpAbs sym a ->
+      ExpAbs sym (fmap reduce a)
+      
+    ExpList elems ->
+      ExpList (map (fmap reduce) elems)
+      
+    ExpRecord fields ->
+      ExpRecord (map (\(fs, fe) -> (fs, fmap reduce fe)) fields)
+    
+    ExpDot r fieldName ->
+      ExpDot (fmap reduce r) fieldName
+
+    ExpInsert sym a b ->
+      ExpInsert sym (fmap reduce a) (fmap reduce b)
+
+    ExpYield a b ->
+      ExpYield (fmap reduce a) (fmap reduce b)
+
+    ExpQLimit a b ->
+      ExpQLimit (fmap reduce a) (fmap reduce b)
+
+    ExpQOrder a b ord ->
+      ExpQOrder (fmap reduce a) (fmap reduce b) ord
+
+    ExpQSelect a b ->
+      ExpQSelect (fmap reduce a) (fmap reduce b)
+
+    ExpQWhere a b ->
+      ExpQWhere (fmap reduce a) (fmap reduce b)
+
+    ExpBinOp op a b ->
+      ExpBinOp op (fmap reduce a) (fmap reduce b)
