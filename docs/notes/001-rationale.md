@@ -23,7 +23,7 @@ For example, with `table example { x : int }`:
 
 ```kuljet
 let add1 = fun x -> x + 1 in
-example { y = add1 x }
+example select { y = add1 x }
 ```
 
 is a valid Kuljet projection of type `query { y : int }` and compiles
