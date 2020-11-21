@@ -396,11 +396,37 @@ infer =
       queryType <- typeCheck PredQuery queryExp
       case queryType of
         TQuery (TRecord fields) -> do
-         _ <- withTypeEnv (\env -> M.union env (M.fromList fields)) (typeCheck (PredExact TBool) whereExp)
-         return (Just queryType)
+          _ <- withTypeEnv (\env -> M.union env (M.fromList fields)) (typeCheck (PredExact TBool) whereExp)
+          return (Just queryType)
 
         _ ->
           locatedFail (locatedSpan queryExp) "Expecting a query"
+
+    Norm.ExpQNatJoin a b -> do
+      a' <- typeCheck PredQuery a >>= asFields (locatedSpan a)
+      b' <- typeCheck PredQuery b >>= asFields (locatedSpan b)
+      let fieldsIntersect = M.intersectionWith (,) (M.fromList a') (M.fromList b')
+          fieldsUnion = a' ++ filter (\(key, _) -> key `notElem` map fst a') b'
+      if M.null fieldsIntersect
+        then locatedFail (locatedSpan b) "Right query does not have fields in command with left query"
+        else do
+        mapM_ checkFieldType (M.toList fieldsIntersect)
+        return $ Just $ TQuery $ TRecord fieldsUnion
+
+      where
+        asFields loc =
+          \case
+            TQuery (TRecord fields) ->
+              return fields
+
+            _ ->
+              locatedFail loc "Expecting a query"
+
+        checkFieldType (Symbol key, (t1, t2)) =
+          if t1 == t2
+          then return ()
+          else locatedFail (locatedSpan b) $
+               "Right query has conflicting type for field '" <> key <> "': " <> typeName t1 <> " vs. " <> typeName t2
 
     Norm.ExpQSelect queryExp selectExp -> do
       queryType <- typeCheck PredQuery queryExp

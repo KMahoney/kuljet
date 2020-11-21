@@ -98,6 +98,7 @@ data Exp
   | ExpQOrder (Located Exp) (Located Exp) QOrder
   | ExpQSelect (Located Exp) (Located Exp)
   | ExpQWhere (Located Exp) (Located Exp)
+  | ExpQNatJoin (Located Exp) (Located Exp)
   | ExpBinOp BinOp (Located Exp) (Located Exp)
   deriving (Show)
 
@@ -208,6 +209,7 @@ queryOps = do
       qBin kwLimit ExpQLimit start e <|>
       qBin kwSelect ExpQSelect start e <|>
       qBin kwWhere ExpQWhere start e <|>
+      qBin kwNatJoin ExpQNatJoin start e <|>
       qOrder start e
 
     qBin kw cons start e = do
@@ -411,7 +413,7 @@ rBracket = lexeme (char ']')
 
 kwServe, kwGet, kwPost, kwFun, kwLet, kwIn, kwTable :: Parsec ()
 kwInsert, kwThen, kwLimit, kwOrder, kwAsc, kwDesc :: Parsec ()
-kwSelect, kwWhere, kwAnd, kwOr :: Parsec ()
+kwSelect, kwWhere, kwNatJoin, kwAnd, kwOr :: Parsec ()
 
 kwServe = keyword "serve"
 kwGet = keyword "get"
@@ -428,6 +430,7 @@ kwAsc = keyword "asc"
 kwDesc = keyword "desc"
 kwSelect = keyword "select"
 kwWhere = keyword "where"
+kwNatJoin = keyword "natJoin"
 kwAnd = keyword "and"
 kwOr = keyword "or"
 
@@ -436,7 +439,7 @@ anyKeyword :: Parsec ()
 anyKeyword = foldr (<|>) empty
   [ kwServe, kwGet, kwPost, kwFun, kwLet, kwIn
   , kwTable, kwInsert, kwThen, kwLimit, kwOrder, kwAsc, kwDesc
-  , kwSelect, kwWhere, kwAnd, kwOr
+  , kwSelect, kwWhere, kwNatJoin, kwAnd, kwOr
   ]
 
 

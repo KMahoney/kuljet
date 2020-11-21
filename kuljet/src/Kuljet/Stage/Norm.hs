@@ -63,6 +63,7 @@ data Exp
   | ExpQOrder (Located Exp) (Located Exp) AST.QOrder
   | ExpQSelect (Located Exp) (Located Exp)
   | ExpQWhere (Located Exp) (Located Exp)
+  | ExpQNatJoin (Located Exp) (Located Exp)
   | ExpBinOp AST.BinOp (Located Exp) (Located Exp)
 
 instance Show Exp where
@@ -82,6 +83,7 @@ instance Show Exp where
       ExpQOrder (At _ a) (At _ b) ord -> "(" ++ show a ++ " order " ++ show b ++ " " ++ showOrd ord ++ ")"
       ExpQSelect (At _ a) (At _ b) -> "(" ++ show a ++ " select " ++ show b ++ ")"
       ExpQWhere (At _ a) (At _ b) -> "(" ++ show a ++ " where " ++ show b ++ ")"
+      ExpQNatJoin (At _ a) (At _ b) -> "(" ++ show a ++ " natJoin " ++ show b ++ ")"
       ExpBinOp op (At _ a) (At _ b) -> "(" ++ show a ++ " " ++ showOp op ++ " " ++ show b ++ ")"
 
     where
@@ -169,6 +171,9 @@ expand =
     AST.ExpQWhere a b ->
       ExpQWhere (fmap expand a) (fmap expand b)
 
+    AST.ExpQNatJoin a b ->
+      ExpQNatJoin (fmap expand a) (fmap expand b)
+
     AST.ExpBinOp op a b ->
       ExpBinOp op (fmap expand a) (fmap expand b)
 
@@ -215,6 +220,9 @@ subst key value =
 
     ExpQWhere a b ->
       ExpQWhere (fmap (subst key value) a) (fmap (subst key value) b)
+
+    ExpQNatJoin a b ->
+      ExpQNatJoin (fmap (subst key value) a) (fmap (subst key value) b)
 
     ExpBinOp op a b ->
       ExpBinOp op (fmap (subst key value) a) (fmap (subst key value) b)
@@ -264,6 +272,9 @@ reduce =
 
     ExpQWhere a b ->
       ExpQWhere (fmap reduce a) (fmap reduce b)
+
+    ExpQNatJoin a b ->
+      ExpQNatJoin (fmap reduce a) (fmap reduce b)
 
     ExpBinOp op a b ->
       ExpBinOp op (fmap reduce a) (fmap reduce b)

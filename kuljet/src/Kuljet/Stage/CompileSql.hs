@@ -154,6 +154,9 @@ compileExp (At eSpan e) =
     AST.ExpQWhere _ _ ->
       locatedFail eSpan "Unexpected query"
 
+    AST.ExpQNatJoin _ _ ->
+      locatedFail eSpan "Unexpected query"
+
 
 type CompileQ a = StateT QueryArgs (ReaderT Env (Either Error)) a
 
@@ -188,6 +191,11 @@ compileQuery (At eSpan e) =
       query <- compileQuery a
       filterExp <- compileQueryExp (S.fromList (map Symbol (QB.columnNames query))) b
       return $ QB.applyFilter filterExp query
+
+    AST.ExpQNatJoin a b -> do
+      a' <- compileQuery a
+      b' <- compileQuery b
+      return $ QB.applyNatJoin a' b'
 
     AST.ExpQOrder a b ord -> do
       query <- compileQuery a
@@ -290,5 +298,8 @@ containsField env =
     AST.ExpQWhere (At _ a) (At _ b) ->
       containsField env a || containsField env b
       
+    AST.ExpQNatJoin (At _ a) (At _ b) ->
+      containsField env a || containsField env b
+
     AST.ExpBinOp _ (At _ a) (At _ b) ->
       containsField env a || containsField env b

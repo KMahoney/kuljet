@@ -89,6 +89,21 @@ SELECT * FROM example LIMIT 100
 ```
 </section>
 
+<section>
+```kuljet
+example1 natJoin example2
+```
+
+is equivalent to the SQL:
+
+```sql
+SELECT * FROM example1 NATURAL JOIN example2
+```
+
+Both tables will need at least one field in common to perform a natural join,
+or the expression will result in a type error.
+</section>
+
 ## Inserting Data
 
 `insert` has the syntax:
