@@ -1,7 +1,9 @@
 (require 'flycheck)
 
 (defconst kuljet--keywords
-  '("serve" "get" "post" "let" "in" "fun" "table" "insert" "then" "limit" "order" "asc" "desc" "select" "where"))
+  '("serve" "get" "post" "let" "in" "fun" "table" "insert"
+    "then" "limit" "order" "asc" "desc" "select" "where"
+    "and" "or"))
 
 (defconst kuljet--font-lock
   `((,(concat "\\_<" (regexp-opt kuljet--keywords) "\\_>") . font-lock-keyword-face)

@@ -367,10 +367,25 @@ infer =
         Nothing ->
           return Nothing
 
-    Norm.ExpBinOp Norm.OpEq a b -> do
-      aType <- typeCheck PredCompare a
+    Norm.ExpBinOp op a b -> do
+      aType <- typeCheck opPred a
       _ <- typeCheck (PredExact aType) b
-      return (Just TBool)
+      return (Just opRetT)
+
+      where
+        (opPred, opRetT) =
+          case op of
+            Norm.OpEq -> (PredCompare, TBool)
+            Norm.OpLt -> (PredOrd, TBool)
+            Norm.OpGt -> (PredOrd, TBool)
+            Norm.OpLtEq -> (PredOrd, TBool)
+            Norm.OpGtEq -> (PredOrd, TBool)
+            Norm.OpPlus -> (PredExact TInt, TInt)
+            Norm.OpMinus -> (PredExact TInt, TInt)
+            Norm.OpMul -> (PredExact TInt, TInt)
+            Norm.OpDiv -> (PredExact TInt, TInt)
+            Norm.OpAnd -> (PredExact TBool, TBool)
+            Norm.OpOr -> (PredExact TBool, TBool)
 
     Norm.ExpQLimit queryExp limitExp -> do
       queryType <- typeCheck PredQuery queryExp

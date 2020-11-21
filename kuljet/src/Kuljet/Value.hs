@@ -55,3 +55,18 @@ partialEq a b =
       b1 == b2
     _ ->
       undefined
+
+
+partialCompare :: Value -> Value -> Ordering
+partialCompare a b =
+  case (a, b) of
+    (VText t1, VText t2) ->
+      compare t1 t2
+    (VInt i1, VInt i2) ->
+      compare i1 i2
+    (VTimestamp t1, VTimestamp t2) ->
+      compare t1 t2
+    (VBool b1, VBool b2) ->
+      compare b1 b2
+    _ ->
+      undefined

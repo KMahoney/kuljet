@@ -57,3 +57,15 @@ a *type annotation*:
 ```kuljet
 fun <var>: <type> -> <expression>
 ```
+
+## Binary Operators
+
+Operate on numbers with `+`, `-`, `*` and `/`.
+
+Compare with `=`, `<`, `>`, `<=` and `>=`.
+
+Combine Boolean values with `and` and `or`.
+
+```kuljet
+1 <= 2 and (3 = 3 + 1 or 3 = 3)
+```

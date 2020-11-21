@@ -108,6 +108,16 @@ data QOrder
 
 data BinOp
   = OpEq
+  | OpPlus
+  | OpMinus
+  | OpMul
+  | OpDiv
+  | OpGt
+  | OpLt
+  | OpGtEq
+  | OpLtEq
+  | OpAnd
+  | OpOr
   deriving (Show)
 
 data Literal
@@ -215,22 +225,37 @@ queryOps = do
   
 
 binOps :: Parsec Exp
-binOps = do
-  start <- getPos
-  parseLocated next >>= ops start
+binOps =
+  startChain initialTiers
 
   where
     next =
       application
-      
-    ops start e =
-      nextOp start e <|> pure (discardLocation e)
 
-    nextOp start e = do
-      opEq
-      a <- parseLocated next
+    initialTiers =
+      [ (kwAnd >> pure OpAnd) <|> (kwOr >> pure OpOr)
+      , (opP "=" OpEq)
+      , (opP "<" OpLt) <|> (opP ">" OpGt) <|> (opP "<=" OpLtEq) <|> (opP ">=" OpGtEq)
+      , (opP "+" OpPlus) <|> (opP "-" OpMinus)
+      , (opP "*" OpMul) <|> (opP "/" OpDiv)
+      ]
+
+    opP op t =
+      operator op >> pure t
+
+    startChain [] = next
+    startChain (tier:nextTiers) = do
+      start <- getPos
+      parseLocated (startChain nextTiers) >>= loop tier (startChain nextTiers) start
+        
+    loop tier nextTier start e =
+      nextOp tier nextTier start e <|> pure (discardLocation e)
+
+    nextOp tier nextTier start e = do
+      op <- tier
+      a <- parseLocated nextTier
       fSpan <- getSpan start
-      ops start (At fSpan (ExpBinOp OpEq e a))
+      loop tier nextTier start (At fSpan (ExpBinOp op e a))
 
 
 application :: Parsec Exp
@@ -384,7 +409,10 @@ lBracket = lexeme (char '[')
 rBracket = lexeme (char ']')
 
 
-kwServe, kwGet, kwPost, kwFun, kwLet, kwIn, kwTable, kwInsert, kwThen, kwLimit, kwOrder, kwAsc, kwDesc, kwSelect, kwWhere :: Parsec ()
+kwServe, kwGet, kwPost, kwFun, kwLet, kwIn, kwTable :: Parsec ()
+kwInsert, kwThen, kwLimit, kwOrder, kwAsc, kwDesc :: Parsec ()
+kwSelect, kwWhere, kwAnd, kwOr :: Parsec ()
+
 kwServe = keyword "serve"
 kwGet = keyword "get"
 kwPost = keyword "post"
@@ -400,12 +428,15 @@ kwAsc = keyword "asc"
 kwDesc = keyword "desc"
 kwSelect = keyword "select"
 kwWhere = keyword "where"
+kwAnd = keyword "and"
+kwOr = keyword "or"
+
 
 anyKeyword :: Parsec ()
 anyKeyword = foldr (<|>) empty
   [ kwServe, kwGet, kwPost, kwFun, kwLet, kwIn
   , kwTable, kwInsert, kwThen, kwLimit, kwOrder, kwAsc, kwDesc
-  , kwSelect, kwWhere
+  , kwSelect, kwWhere, kwAnd, kwOr
   ]
 
 

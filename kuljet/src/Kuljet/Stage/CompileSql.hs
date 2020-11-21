@@ -219,10 +219,25 @@ compileQueryExp env (At eSpan e) =
           | S.member sym env ->
             return $ QB.EField (symbolName sym)
     
-        AST.ExpBinOp AST.OpEq a b -> do
+        AST.ExpBinOp op a b -> do
           a' <- compileQueryExp env a
           b' <- compileQueryExp env b 
-          return $ QB.EBinOp "=" a' b'
+          return $ QB.EBinOp sqlOp a' b'
+
+          where
+            sqlOp =
+              case op of
+                AST.OpEq -> "="
+                AST.OpPlus -> "+"
+                AST.OpMinus -> "-"
+                AST.OpMul -> "*"
+                AST.OpDiv -> "/"
+                AST.OpLt -> "<"
+                AST.OpGt -> ">"
+                AST.OpLtEq -> "<="
+                AST.OpGtEq -> ">="
+                AST.OpAnd -> "AND"
+                AST.OpOr -> "OR"
           
         _ ->
           lift (locatedFail eSpan "Cannot compile into query expression")

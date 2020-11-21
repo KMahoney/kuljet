@@ -82,7 +82,7 @@ instance Show Exp where
       ExpQOrder (At _ a) (At _ b) ord -> "(" ++ show a ++ " order " ++ show b ++ " " ++ showOrd ord ++ ")"
       ExpQSelect (At _ a) (At _ b) -> "(" ++ show a ++ " select " ++ show b ++ ")"
       ExpQWhere (At _ a) (At _ b) -> "(" ++ show a ++ " where " ++ show b ++ ")"
-      ExpBinOp AST.OpEq (At _ a) (At _ b) -> "(" ++ show a ++ " = " ++ show b ++ ")"
+      ExpBinOp op (At _ a) (At _ b) -> "(" ++ show a ++ " " ++ showOp op ++ " " ++ show b ++ ")"
 
     where
       annotatedSym =
@@ -96,6 +96,20 @@ instance Show Exp where
         \case
           AST.OrderAscending -> "asc"
           AST.OrderDescending -> "desc"
+
+      showOp =
+        \case
+          AST.OpEq -> "="
+          AST.OpPlus -> "+"
+          AST.OpMinus -> "-"
+          AST.OpMul -> "*"
+          AST.OpDiv -> "/"
+          AST.OpLt -> "<"
+          AST.OpGt -> ">"
+          AST.OpLtEq -> "<="
+          AST.OpGtEq -> ">="
+          AST.OpAnd -> "and"
+          AST.OpOr -> "or"
 
 
 normalise :: AST.Module -> Module

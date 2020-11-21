@@ -220,10 +220,21 @@ interpret db env =
         Just value -> return value
         Nothing -> typeCheckFailure
 
-    AST.ExpBinOp AST.OpEq a b -> do
+    AST.ExpBinOp op a b -> do
       a' <- interpret db env (discardLocation a)
       b' <- interpret db env (discardLocation b)
-      return $ VBool $ partialEq a' b'
+      case op of
+        AST.OpEq -> return $ VBool $ partialEq a' b'
+        AST.OpPlus -> return $ VInt $ valueAsInteger a' + valueAsInteger b'
+        AST.OpMinus -> return $ VInt $ valueAsInteger a' - valueAsInteger b'
+        AST.OpMul -> return $ VInt $ valueAsInteger a' * valueAsInteger b'
+        AST.OpDiv -> return $ VInt $ valueAsInteger a' `div` valueAsInteger b'
+        AST.OpLt -> return $ VBool $ partialCompare a' b' == LT
+        AST.OpGt -> return $ VBool $ partialCompare a' b' == GT
+        AST.OpLtEq -> return $ VBool $ partialCompare a' b' /= GT
+        AST.OpGtEq -> return $ VBool $ partialCompare a' b' /= LT
+        AST.OpAnd -> return $ VBool $ valueAsBool a' && valueAsBool b'
+        AST.OpOr -> return $ VBool $ valueAsBool a' || valueAsBool b'
         
     AST.ExpYield (query, queryArgs) yieldExp -> do
       queryArgs' <- mapM (interpret db env) queryArgs
