@@ -23,7 +23,9 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - hakyll
+    - directory
+    - lucid
     - skylighting-core
     - pandoc
     - containers
+    - text

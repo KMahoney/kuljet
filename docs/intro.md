@@ -1,3 +1,7 @@
+---
+title: Introduction
+---
+
 **[A WORK IN PROGRESS]**
 
 *Kuljet* is a happy little language for writing database-backed HTML applications.
