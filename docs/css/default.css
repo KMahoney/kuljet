@@ -2,7 +2,7 @@
 
 html {
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-    line-height: 1.5;
+    line-height: 1.8;
 }
 
 body {
@@ -18,28 +18,37 @@ h1 {
     border-bottom: 0.2rem solid #000;
 }
 
-h2 { font-size: 1.5rem; }
-
-section {
-    margin-bottom: 4rem;
+h2 {
+    margin-top: 4rem;
+    font-size: 1.5rem;
 }
 
-article {
+section {
     background: #F5F5F5;
     padding: 1rem;
     margin-bottom: 1rem;
-    border: 1px solid #DDD;
+    border: 1px solid #AAA;
 }
 
-article h1 {
-    font-size: 1.5rem;
-    border: none;
-    text-align: left;
-}
-article h2 { font-size: 1.2rem; }
 
-nav { margin-top: 5rem; }
-nav ul { list-style: none; margin: 0 0 1rem 0; padding: 0 0 0 1rem; }
+/* nav */
+
+nav {
+    margin: 5rem 0;
+}
+
+nav ul {
+    list-style: none;
+    margin: 0 0 1rem 0;
+    padding: 0 0 0 1rem;
+}
+
+nav a {
+    text-decoration: none;
+}
+
+
+/* code */
 
 :not(pre) > code {
     white-space: nowrap;
@@ -47,6 +56,19 @@ nav ul { list-style: none; margin: 0 0 1rem 0; padding: 0 0 0 1rem; }
     padding: 0.2rem 0.6rem;
 }
 
+pre {
+    color: #DCDCCC;
+    background-color: #3F3F3F;
+    padding: 1rem;
+    overflow-x: auto;
+}
+
+.kuljet .kw { color: #F0DFAF; font-weight: bold; }
+.kuljet .st { color: #CC9393; }
+.kuljet .va { color: #DFAF8F; }
+
+
+/* tables */
 
 table {
     overflow-x: auto;
@@ -68,16 +90,16 @@ table td, table th {
 }
 
 
+/* responsive */
 
-pre { color: #DCDCCC; background-color: #3F3F3F; padding: 1rem; overflow-x: auto; }
-.kuljet .kw { color: #F0DFAF; font-weight: bold; }
-.kuljet .st { color: #CC9393; }
-.kuljet .va { color: #DFAF8F; }
-
-
-  
 @media (max-width: 60rem) {
-    body { width: 90%; margin: 0 auto; }
+    body {
+        width: 90%;
+        margin: 0 auto;
+    }
+    h1 {
+        text-align: left;
+    }
 }
 
 @media (min-width: 60rem) {

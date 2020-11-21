@@ -35,8 +35,7 @@ If table `ints` contained values 1 to 3, the output would be:
 
 Tables can be queried with the `select`, `where`, `order` and `limit` operators.
 
-
-### select
+<section>
 
 ```kuljet
 example select { textField, intField = intField + 1 }
@@ -49,8 +48,9 @@ SELECT textField, intField + 1 AS intField FROM example
 ```
 
 Note that you can name pun fields, so `select { textField }` is the same as `select { textField = textField }`.
+</section>
 
-### where
+<section>
 
 ```kuljet
 example where intField = 1
@@ -61,8 +61,9 @@ is equivalent to the SQL:
 ```sql
 SELECT * FROM example WHERE intField = 1
 ```
+</section>
 
-### order
+<section>
 
 ```kuljet
 example order intField desc
@@ -73,8 +74,9 @@ is equivalent to the SQL:
 ```sql
 SELECT * FROM example ORDER BY intField DESC
 ```
+</section>
 
-### limit
+<section>
 
 ```kuljet
 example limit 100
@@ -85,10 +87,7 @@ is equivalent to the SQL:
 ```sql
 SELECT * FROM example LIMIT 100
 ```
-
-### join
-
-TODO
+</section>
 
 ## Inserting Data
 

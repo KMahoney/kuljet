@@ -1,5 +1,0 @@
----
-title: Type Checking
----
-
-TODO
