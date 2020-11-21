@@ -2,7 +2,7 @@
 title: Introduction
 ---
 
-**[A WORK IN PROGRESS]**
+**[A WORK IN PROGRESS - NOT THAT USEFUL YET!]**
 
 *Kuljet* is a happy little language for writing database-backed HTML applications.
 Its type checking and integration with relational databases should help you whip up
