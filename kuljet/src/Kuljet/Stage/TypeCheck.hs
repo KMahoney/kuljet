@@ -79,6 +79,7 @@ data TypePred
   | PredOrd
   | PredProject
   | PredCompare
+  deriving (Eq)
 
 
 -- TypeCheck Monad
@@ -209,15 +210,11 @@ typeCheck p (At eSpan e) = do
               locatedFail eSpan ("Expression is a function, but expected " <> predExpected)
           
         Norm.ExpList exps ->
-          case p of
-            PredHtml -> do
-              mapM_ (typeCheck PredHtml) exps
-              return (TList THtml)
-
-            PredHtmlTagArg -> do
-              mapM_ (typeCheck PredHtml) exps
-              return (TList THtml)
-
+          if isHtmlPred
+          then do
+            mapM_ (typeCheck PredHtml) exps
+            return (TList THtml)
+          else case p of
             PredExact (TList t) -> do
               mapM_ (typeCheck (PredExact t)) exps
               return (TList t)
@@ -227,24 +224,20 @@ typeCheck p (At eSpan e) = do
 
         Norm.ExpIf a b c -> do
           _ <- typeCheck (PredExact TBool) a
-          case p of
-            PredHtml -> do
+          if isHtmlPred
+            then do
               _ <- typeCheck PredHtml b
               _ <- typeCheck PredHtml c
               return THtml
 
-            PredHtmlTagArg -> do
-              _ <- typeCheck PredHtml b
-              _ <- typeCheck PredHtml c
-              return THtml
-
-            PredExact t -> do
-              _ <- typeCheck (PredExact t) b
-              _ <- typeCheck (PredExact t) c
-              return t
-
-            _ ->
-              locatedFail eSpan ("Expected both 'if' branches to be " <> predExpected)
+            else case p of
+              PredExact t -> do
+                _ <- typeCheck (PredExact t) b
+                _ <- typeCheck (PredExact t) c
+                return t
+  
+              _ ->
+                locatedFail eSpan ("Expected both 'if' branches to be " <> predExpected)
 
           
         Norm.ExpInsert (At tableSpan tableName) value andThen ->
@@ -261,6 +254,9 @@ typeCheck p (At eSpan e) = do
   where
     isHtml t =
       t `elem` [THtmlTag, THtmlTagWithAttrs, THtml, TText, TInt]
+
+    isHtmlPred =
+      p `elem` [PredHtml, PredHtmlTagArg, PredResponse, PredPostResponse]
 
     isAttributes =
       \case
