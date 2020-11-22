@@ -1,2 +1,2 @@
 #!/bin/bash
-ls guides/* notes/* reference/* css/* images/* site.hs intro.md | entr stack runhaskell site.hs . _site
+find . -name '*.md' -or -name '*.hs' -or -name '*.css' | entr stack runhaskell site.hs . _site

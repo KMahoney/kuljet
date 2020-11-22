@@ -74,6 +74,7 @@ main = do
   createDirectoryIfMissing False destDir
   rFile (srcDir <> "/css/default.css") >>= wFile (destDir <> "/default.css")
   rFile (srcDir <> "/images/ext.svg") >>= wFile (destDir <> "/ext.svg")
+  rFile (srcDir <> "/images/bars.svg") >>= wFile (destDir <> "/bars.svg")
   wFile (destDir <> "/index.html") (renderPage docs intro)
 
   createDirectoryIfMissing True (destDir <> "/install")
@@ -127,6 +128,7 @@ page docs doc = do
       link_ [ rel_ "stylesheet", href_ "/default.css" ]
       title_ ("Kuljet: " <> toHtml title)
     body_ $ do
+      div_ [id_ "navBar", onclick_ toggleJs] (img_ [src_ "/bars.svg", style_ "height: 1.2rem; pointer-events: none;"])
       nav_ $ do
         ul_ $ do
           li_ "Kuljet"
@@ -150,6 +152,9 @@ page docs doc = do
   where
     title =
       docTitle doc
+
+    toggleJs =
+      "var navStyle = document.querySelector('nav').style; navStyle.display = navStyle.display === 'block' ? 'none' : 'block'"
 
     ext =
       img_ [src_ "/ext.svg", style_ "height: 0.8rem; margin-right: 0.1rem;"]

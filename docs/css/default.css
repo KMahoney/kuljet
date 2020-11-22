@@ -94,11 +94,25 @@ table td, table th {
 
 @media (max-width: 60rem) {
     body {
+        margin: 0;
+    }
+    main {
         width: 90%;
         margin: 0 auto;
     }
     h1 {
         text-align: left;
+    }
+    nav {
+        display: none;
+        background: #EEE;
+        margin: 0;
+        padding: 1rem 0;
+    }
+    #navBar {
+        display: block;
+        padding: 1rem 1rem;
+        background: #DDD;
     }
 }
 
@@ -118,5 +132,9 @@ table td, table th {
     nav {
         flex-shrink: 0;
         padding-right: 4rem;
+        display: block !important;
+    }
+    #navBar {
+        display: none;
     }
 }
