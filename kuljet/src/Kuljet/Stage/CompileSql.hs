@@ -64,6 +64,7 @@ data Exp
   | ExpInsert (Located Symbol) (Located Exp) (Located Exp)
   | ExpYield (QB.Query, QueryArgs) (Located Exp)
   | ExpBinOp AST.BinOp (Located Exp) (Located Exp)
+  | ExpIf (Located Exp) (Located Exp) (Located Exp)
   deriving (Show)
 
 type QueryArgs = M.Map Integer Exp
@@ -141,6 +142,9 @@ compileExp (At eSpan e) =
 
     AST.ExpBinOp op a b ->
       At eSpan <$> (ExpBinOp op <$> compileExp a <*> compileExp b)
+
+    AST.ExpIf a b c ->
+      At eSpan <$> (ExpIf <$> compileExp a <*> compileExp b <*> compileExp c)
 
     AST.ExpQLimit _ _ ->
       locatedFail eSpan "Unexpected query"
@@ -303,3 +307,6 @@ containsField env =
 
     AST.ExpBinOp _ (At _ a) (At _ b) ->
       containsField env a || containsField env b
+
+    AST.ExpIf (At _ a) (At _ b) (At _ c) ->
+      containsField env a || containsField env b || containsField env c

@@ -69,3 +69,13 @@ Combine Boolean values with `and` and `or`.
 ```kuljet
 1 <= 2 and (3 = 3 + 1 or 3 = 3)
 ```
+
+## If expression
+
+`if` expressions are written:
+
+```kuljet
+if <condition> then <expression> else <expression>
+```
+
+Unlike C-style languages, they are expressions not statements.

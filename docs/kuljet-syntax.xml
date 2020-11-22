@@ -17,6 +17,8 @@
       <item>natJoin</item>
       <item>and</item>
       <item>or</item>
+      <item>if</item>
+      <item>else</item>
     </list>
     <list name="varKeywords">
       <item>let</item>

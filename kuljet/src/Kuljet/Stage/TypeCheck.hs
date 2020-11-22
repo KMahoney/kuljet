@@ -225,6 +225,28 @@ typeCheck p (At eSpan e) = do
             _ ->
               locatedFail eSpan ("Expression is a list, but expected " <> predExpected)
 
+        Norm.ExpIf a b c -> do
+          _ <- typeCheck (PredExact TBool) a
+          case p of
+            PredHtml -> do
+              _ <- typeCheck PredHtml b
+              _ <- typeCheck PredHtml c
+              return THtml
+
+            PredHtmlTagArg -> do
+              _ <- typeCheck PredHtml b
+              _ <- typeCheck PredHtml c
+              return THtml
+
+            PredExact t -> do
+              _ <- typeCheck (PredExact t) b
+              _ <- typeCheck (PredExact t) c
+              return t
+
+            _ ->
+              locatedFail eSpan ("Expected both 'if' branches to be " <> predExpected)
+
+          
         Norm.ExpInsert (At tableSpan tableName) value andThen ->
           lookupTable tableName >>= \case
           Just table -> do

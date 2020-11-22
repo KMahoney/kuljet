@@ -235,7 +235,13 @@ interpret db env =
         AST.OpGtEq -> return $ VBool $ partialCompare a' b' /= LT
         AST.OpAnd -> return $ VBool $ valueAsBool a' && valueAsBool b'
         AST.OpOr -> return $ VBool $ valueAsBool a' || valueAsBool b'
-        
+
+    AST.ExpIf a b c -> do
+      a' <- interpret db env (discardLocation a)
+      if valueAsBool a'
+        then interpret db env (discardLocation b)
+        else interpret db env (discardLocation c)
+      
     AST.ExpYield (query, queryArgs) yieldExp -> do
       queryArgs' <- mapM (interpret db env) queryArgs
       result <- Query.execute db query queryArgs'

@@ -65,6 +65,7 @@ data Exp
   | ExpQWhere (Located Exp) (Located Exp)
   | ExpQNatJoin (Located Exp) (Located Exp)
   | ExpBinOp AST.BinOp (Located Exp) (Located Exp)
+  | ExpIf (Located Exp) (Located Exp) (Located Exp)
 
 instance Show Exp where
   show =
@@ -85,6 +86,7 @@ instance Show Exp where
       ExpQWhere (At _ a) (At _ b) -> "(" ++ show a ++ " where " ++ show b ++ ")"
       ExpQNatJoin (At _ a) (At _ b) -> "(" ++ show a ++ " natJoin " ++ show b ++ ")"
       ExpBinOp op (At _ a) (At _ b) -> "(" ++ show a ++ " " ++ showOp op ++ " " ++ show b ++ ")"
+      ExpIf (At _ a) (At _ b) (At _ c) -> "(if " ++ show a ++ " then " ++ show b ++ " else " ++ show c ++ ")"
 
     where
       annotatedSym =
@@ -177,6 +179,9 @@ expand =
     AST.ExpBinOp op a b ->
       ExpBinOp op (fmap expand a) (fmap expand b)
 
+    AST.ExpIf a b c ->
+      ExpIf (fmap expand a) (fmap expand b) (fmap expand c)
+
 
 subst :: Symbol -> Exp -> Exp -> Exp
 subst key value =
@@ -226,6 +231,9 @@ subst key value =
 
     ExpBinOp op a b ->
       ExpBinOp op (fmap (subst key value) a) (fmap (subst key value) b)
+
+    ExpIf a b c ->
+      ExpIf (fmap (subst key value) a) (fmap (subst key value) b) (fmap (subst key value) c)
 
 
 reduce :: Exp -> Exp
@@ -278,3 +286,6 @@ reduce =
 
     ExpBinOp op a b ->
       ExpBinOp op (fmap reduce a) (fmap reduce b)
+
+    ExpIf a b c ->
+      ExpIf (fmap reduce a) (fmap reduce b) (fmap reduce c)

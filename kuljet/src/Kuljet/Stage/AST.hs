@@ -100,6 +100,7 @@ data Exp
   | ExpQWhere (Located Exp) (Located Exp)
   | ExpQNatJoin (Located Exp) (Located Exp)
   | ExpBinOp BinOp (Located Exp) (Located Exp)
+  | ExpIf (Located Exp) (Located Exp) (Located Exp)
   deriving (Show)
 
 data QOrder
@@ -294,7 +295,7 @@ fields = do
 simpleExpression :: Parsec Exp
 simpleExpression =
   expecting "expression" $
-  parens <|> fn <|> array <|> record <|> int <|> var <|> str <|> let_
+  parens <|> fn <|> ifExp <|> array <|> record <|> int <|> var <|> str <|> let_
   
   where
     parens = ExpParens <$> (lParen *> expression <* rParen)
@@ -308,6 +309,9 @@ simpleExpression =
       (operator "=" *> parseLocated expression) <*>
       (kwIn *> parseLocated expression)
     record = ExpRecord <$> (lCurly *> field `sepBy` comma <* rCurly)
+    ifExp = ExpIf <$> (kwIf *> parseLocated expression)
+                  <*> (kwThen *> parseLocated expression)
+                  <*> (kwElse *> parseLocated expression)
 
     -- fields support name punning, so that {a} = {a = a}
     field = do
@@ -413,7 +417,7 @@ rBracket = lexeme (char ']')
 
 kwServe, kwGet, kwPost, kwFun, kwLet, kwIn, kwTable :: Parsec ()
 kwInsert, kwThen, kwLimit, kwOrder, kwAsc, kwDesc :: Parsec ()
-kwSelect, kwWhere, kwNatJoin, kwAnd, kwOr :: Parsec ()
+kwSelect, kwWhere, kwNatJoin, kwAnd, kwOr, kwIf, kwElse :: Parsec ()
 
 kwServe = keyword "serve"
 kwGet = keyword "get"
@@ -433,13 +437,15 @@ kwWhere = keyword "where"
 kwNatJoin = keyword "natJoin"
 kwAnd = keyword "and"
 kwOr = keyword "or"
+kwIf = keyword "if"
+kwElse = keyword "else"
 
 
 anyKeyword :: Parsec ()
 anyKeyword = foldr (<|>) empty
   [ kwServe, kwGet, kwPost, kwFun, kwLet, kwIn
   , kwTable, kwInsert, kwThen, kwLimit, kwOrder, kwAsc, kwDesc
-  , kwSelect, kwWhere, kwNatJoin, kwAnd, kwOr
+  , kwSelect, kwWhere, kwNatJoin, kwAnd, kwOr, kwIf, kwElse
   ]
 
 
