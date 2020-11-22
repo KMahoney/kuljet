@@ -1,5 +1,5 @@
 ---
-title: Functions
+title: Standard Library
 ---
 
 ## HTML Tags
@@ -34,4 +34,12 @@ now : timestamp
 ```
 
 The current time.
+</section>
+
+<section>
+```
+docType : html
+```
+
+The HTML `<!DOCTYPE html>` declaration
 </section>
