@@ -118,11 +118,27 @@ instance Show Exp where
 
 normalise :: AST.Module -> Module
 normalise parsedModule =
-  Module (map normaliseDecl (AST.moduleEndpoints parsedModule)) (AST.moduleTables parsedModule)
+  Module (normaliseDecls [] (AST.moduleDecls parsedModule)) (AST.moduleTables parsedModule)
 
   where
-    normaliseDecl (AST.Serve { AST.serveMethod, AST.servePath, AST.serveExp }) =
-      Serve { serveMethod, servePath, serveExp = fmap (reduce . expand) serveExp }
+    normaliseDecls :: [(Symbol, Exp)] -> [AST.Decl] -> [Endpoint]
+    normaliseDecls lets =
+      \case
+        [] ->
+          []
+        AST.EndpointDecl serve : decls ->
+          normaliseServe lets serve : normaliseDecls lets decls
+        AST.LetDecl symbol letExp : decls ->
+          normaliseDecls ((symbol, substLets lets (expand letExp)):lets) decls
+        _ : decls ->
+          normaliseDecls lets decls
+
+    normaliseServe lets (AST.Serve { AST.serveMethod, AST.servePath, AST.serveExp }) =
+      Serve { serveMethod, servePath, serveExp = fmap (reduce . substLets lets . expand) serveExp }
+
+    substLets :: [(Symbol, Exp)] -> Exp -> Exp
+    substLets lets e =
+      foldr (\(key, a) b -> subst key a b) e lets
 
 
 expand :: AST.Exp -> Exp

@@ -3,7 +3,8 @@ module Kuljet.Stage.AST
   , moduleDecls
   , moduleEndpoints
   , moduleTables
-  
+
+  , Decl(..)
   , Endpoint(..)
   , Exp(..)
   , Literal(..)
@@ -64,6 +65,7 @@ moduleTables = Maybe.mapMaybe table . moduleDecls
 data Decl
   = EndpointDecl Endpoint
   | TableDecl Table
+  | LetDecl Symbol Exp
   deriving (Show)
 
 
@@ -149,7 +151,7 @@ kuljetModule =
 decl :: Parsec Decl
 decl =
   expecting "'serve' or 'table' declaration" $
-  (EndpointDecl <$> serve) <|> (TableDecl <$> table)
+  (EndpointDecl <$> serve) <|> (TableDecl <$> table) <|> topLet
 
   where
     serve =
@@ -157,6 +159,9 @@ decl =
 
     table =
       Table <$> (kwTable *> (expecting "table name" symbol)) <*> parseLocated typeDecl
+
+    topLet =
+      LetDecl <$> (kwLet *> symbol) <*> (opEq *> expression)
 
 
 method :: Parsec Method.Method
@@ -170,7 +175,7 @@ method =
   
 
 expression :: Parsec Exp
-expression = insert <|> yields
+expression = insert <|> letInExpression
 
 
 insert :: Parsec Exp
@@ -178,87 +183,105 @@ insert =
   ExpInsert <$> (kwInsert *> parseLocated symbol) <*> parseLocated expression <*> (kwThen *> parseLocated expression)
 
 
-yields :: Parsec Exp
-yields = do
-  start <- getPos
-  parseLocated queryOps >>= args start
+letInExpression :: Parsec Exp
+letInExpression = let_ <|> infixExpressions
 
   where
-    args start e =
-      nextArg start e <|> pure (discardLocation e)
-
-    nextArg start e = do
-      operator "->"
-      a <- parseLocated queryOps
-      fSpan <- getSpan start
-      args start (At fSpan (ExpYield e a))
+    let_ = ExpLet <$>
+      (kwLet *> symbol) <*>
+      (operator "=" *> parseLocated expression) <*>
+      (kwIn *> parseLocated expression)
 
 
-queryOps :: Parsec Exp
-queryOps = do
-  start <- getPos
-  parseLocated next >>= ops start
+-- FIXME: improve this
+infixExpressions :: Parsec Exp
+infixExpressions = yields
 
   where
-    next =
-      binOps
-      
-    ops start e =
-      nextOp start e <|> pure (discardLocation e)
-
-    nextOp start e =
-      qBin kwLimit ExpQLimit start e <|>
-      qBin kwSelect ExpQSelect start e <|>
-      qBin kwWhere ExpQWhere start e <|>
-      qBin kwNatJoin ExpQNatJoin start e <|>
-      qOrder start e
-
-    qBin kw cons start e = do
-      kw
-      a <- parseLocated next
-      fSpan <- getSpan start
-      ops start (At fSpan (cons e a))
-
-    qOrder start e = do
-      kwOrder
-      a <- parseLocated next
-      ord <- optional ((kwAsc >> return OrderAscending) <|> (kwDesc >> return OrderDescending))
-      fSpan <- getSpan start
-      ops start (At fSpan (ExpQOrder e a (Maybe.fromMaybe OrderAscending ord)))
-  
-
-binOps :: Parsec Exp
-binOps =
-  startChain initialTiers
-
-  where
-    next =
-      application
-
-    initialTiers =
-      [ (kwAnd >> pure OpAnd) <|> (kwOr >> pure OpOr)
-      , (opP "=" OpEq)
-      , (opP "<" OpLt) <|> (opP ">" OpGt) <|> (opP "<=" OpLtEq) <|> (opP ">=" OpGtEq)
-      , (opP "+" OpPlus) <|> (opP "-" OpMinus)
-      , (opP "*" OpMul) <|> (opP "/" OpDiv)
-      ]
-
-    opP op t =
-      operator op >> pure t
-
-    startChain [] = next
-    startChain (tier:nextTiers) = do
+    yields :: Parsec Exp
+    yields = do
       start <- getPos
-      parseLocated (startChain nextTiers) >>= loop tier (startChain nextTiers) start
-        
-    loop tier nextTier start e =
-      nextOp tier nextTier start e <|> pure (discardLocation e)
-
-    nextOp tier nextTier start e = do
-      op <- tier
-      a <- parseLocated nextTier
-      fSpan <- getSpan start
-      loop tier nextTier start (At fSpan (ExpBinOp op e a))
+      parseLocated next >>= args start
+    
+      where
+        next =
+          queryOps
+          
+        args start e =
+          nextArg start e <|> pure (discardLocation e)
+    
+        nextArg start e = do
+          operator "->"
+          a <- parseLocated next
+          fSpan <- getSpan start
+          args start (At fSpan (ExpYield e a))
+    
+    
+    queryOps :: Parsec Exp
+    queryOps = do
+      start <- getPos
+      parseLocated next >>= ops start
+    
+      where
+        next =
+          binOps
+          
+        ops start e =
+          nextOp start e <|> pure (discardLocation e)
+    
+        nextOp start e =
+          qBin kwLimit ExpQLimit start e <|>
+          qBin kwSelect ExpQSelect start e <|>
+          qBin kwWhere ExpQWhere start e <|>
+          qBin kwNatJoin ExpQNatJoin start e <|>
+          qOrder start e
+    
+        qBin kw cons start e = do
+          kw
+          a <- parseLocated next
+          fSpan <- getSpan start
+          ops start (At fSpan (cons e a))
+    
+        qOrder start e = do
+          kwOrder
+          a <- parseLocated next
+          ord <- optional ((kwAsc >> return OrderAscending) <|> (kwDesc >> return OrderDescending))
+          fSpan <- getSpan start
+          ops start (At fSpan (ExpQOrder e a (Maybe.fromMaybe OrderAscending ord)))
+      
+    
+    binOps :: Parsec Exp
+    binOps =
+      startChain initialTiers
+    
+      where
+        next =
+          application
+    
+        initialTiers =
+          [ (kwAnd >> pure OpAnd) <|> (kwOr >> pure OpOr)
+          , (opP "=" OpEq)
+          , (opP "<" OpLt) <|> (opP ">" OpGt) <|> (opP "<=" OpLtEq) <|> (opP ">=" OpGtEq)
+          , (opP "+" OpPlus) <|> (opP "-" OpMinus)
+          , (opP "*" OpMul) <|> (opP "/" OpDiv)
+          ]
+    
+        opP op t =
+          operator op >> pure t
+    
+        startChain [] = next
+        startChain (tier:nextTiers) = do
+          start <- getPos
+          parseLocated (startChain nextTiers) >>= loop tier (startChain nextTiers) start
+            
+        loop tier nextTier start e =
+          nextOp tier nextTier start e <|> pure (discardLocation e)
+    
+        nextOp tier nextTier start e = do
+          op <- tier
+          a <- parseLocated nextTier
+          fSpan <- getSpan start
+          loop tier nextTier start (At fSpan (ExpBinOp op e a))
 
 
 application :: Parsec Exp
@@ -295,7 +318,7 @@ fields = do
 simpleExpression :: Parsec Exp
 simpleExpression =
   expecting "expression" $
-  parens <|> fn <|> ifExp <|> array <|> record <|> int <|> var <|> str <|> let_
+  parens <|> fn <|> ifExp <|> array <|> record <|> int <|> var <|> str
   
   where
     parens = ExpParens <$> (lParen *> expression <* rParen)
@@ -304,10 +327,6 @@ simpleExpression =
     int = ExpLiteral . LitInt <$> lexeme integer
     str = ExpLiteral . LitStr <$> lexeme quotedString
     var = ExpVar <$> parseLocated symbol
-    let_ = ExpLet <$>
-      (kwLet *> symbol) <*>
-      (operator "=" *> parseLocated expression) <*>
-      (kwIn *> parseLocated expression)
     record = ExpRecord <$> (lCurly *> field `sepBy` comma <* rCurly)
     ifExp = ExpIf <$> (kwIf *> parseLocated expression)
                   <*> (kwThen *> parseLocated expression)

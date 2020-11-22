@@ -2,8 +2,18 @@
 title: The Structure of a Kuljet Program
 ---
 
-A Kuljet program is made up of table declarations and
-'serve' declarations.
+A Kuljet program is made up of `table` declarations, `let` declarations and
+`serve` declarations.
+
+```kuljet
+table <name> { <field>: <type>, ... }
+
+let <name> = <expression>
+
+serve <method> <path> = <expression>
+```
+
+## Table Declaration
 
 A **table declaration** should reflect the names and
 types of a table in your database. It has the form:
@@ -17,6 +27,25 @@ e.g.
 ```kuljet
 table people { name: text, age: int }
 ```
+
+## Let Declaration
+
+A top level **let declaration** binds a name to an expression
+for all following declarations.
+
+```kuljet
+let <name> = <expression>
+```
+
+e.g.
+
+```kuljet
+let x = 1
+
+let add1 = fun x -> x + 1
+```
+
+## Serve Declaration
 
 A **serve declaration** routes a HTTP request to an
 expression, and has the form:
