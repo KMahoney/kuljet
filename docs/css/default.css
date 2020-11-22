@@ -112,6 +112,8 @@ table td, table th {
         flex-shrink: 1;
         min-width: 30rem;
         max-width: 50rem;
+        width: 100%;
+        padding-right: 1rem;
     }
     nav {
         flex-shrink: 0;

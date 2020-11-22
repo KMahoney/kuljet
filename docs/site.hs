@@ -66,14 +66,19 @@ main = do
   Right syntax <- Sky.loadSyntaxFromFile "kuljet-syntax.xml"
 
   intro <- parseDoc syntax srcDir "/" "intro.md"
+  install <- parseDoc syntax srcDir "/" "install.md"
   docs <- Docs <$> parseDir syntax srcDir "/guides/"
                <*> parseDir syntax srcDir "/reference/"
                <*> parseDir syntax srcDir "/notes/"
 
-  createDirectoryIfMissing False "_site"
+  createDirectoryIfMissing False destDir
   rFile (srcDir <> "/css/default.css") >>= wFile (destDir <> "/default.css")
   rFile (srcDir <> "/images/ext.svg") >>= wFile (destDir <> "/ext.svg")
   wFile (destDir <> "/index.html") (renderPage docs intro)
+
+  createDirectoryIfMissing True (destDir <> "/install")
+  wFile (destDir <> "/install/index.html") (renderPage docs install)
+
   mapM_ (writeDoc destDir docs) (guides docs)
   mapM_ (writeDoc destDir docs) (reference docs)
   mapM_ (writeDoc destDir docs) (notes docs)
@@ -127,6 +132,7 @@ page docs doc = do
           li_ "Kuljet"
           ul_ $ do
             li_ (a_ [href_ "/"] "Introduction")
+            li_ (a_ [href_ "/install/"] "Install")
             li_ (a_ [href_ "https://github.com/KMahoney/kuljet"] (ext <> "GitHub"))
           li_ "Guides"
           ul_ $ do
