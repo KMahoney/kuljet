@@ -30,10 +30,10 @@ constructs a response that serves `<path>` with the given `<contentType>`.
 
 <section>
 ```
-now : timestamp
+getTimestamp : io timestamp
 ```
 
-The current time.
+An IO action to retrieve the current time.
 </section>
 
 <section>

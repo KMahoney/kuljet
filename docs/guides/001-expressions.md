@@ -79,3 +79,15 @@ if <condition> then <expression> else <expression>
 ```
 
 Unlike C-style languages, they are expressions not statements.
+
+
+## Then expression
+
+A `then` expression is written:
+
+```kuljet
+<expression> [as <name>] then <expression>
+```
+
+where the first expression has type `io`. The `then` expression
+evaluates the IO action, optionally binding the result to `<name>`.

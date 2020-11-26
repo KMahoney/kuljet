@@ -22,6 +22,7 @@
     </list>
     <list name="varKeywords">
       <item>let</item>
+      <item>as</item>
       <item>table</item>
       <item>insert</item>
     </list>

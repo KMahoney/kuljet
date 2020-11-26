@@ -239,15 +239,6 @@ typeCheck p (At eSpan e) = do
               _ ->
                 locatedFail eSpan ("Expected both 'if' branches to be " <> predExpected)
 
-          
-        Norm.ExpInsert (At tableSpan tableName) value andThen ->
-          lookupTable tableName >>= \case
-          Just table -> do
-            _ <- typeCheck (PredExact (tableRowType table)) value
-            typeCheck p andThen
-          Nothing ->
-            locatedFail tableSpan "Unknown table"
-
         _ ->
           locatedFail eSpan "Cannot infer type"
 
@@ -265,13 +256,13 @@ typeCheck p (At eSpan e) = do
 
     isPostFun =
       \case
-        TFn (TRecord fields) ret -> all ((TText ==) . snd) fields && (isHtml ret || isResponse ret)
+        TFn (TRecord fields) ret -> all ((TText ==) . snd) fields && isResponseSubtype ret
         _ -> False
 
-    isResponse =
+    isResponseSubtype =
       \case
-        TResponse -> True
-        _ -> False
+        TIO t -> t == TResponse || isHtml t
+        t -> t == TResponse || isHtml t
 
     isQuery =
       \case
@@ -287,8 +278,8 @@ typeCheck p (At eSpan e) = do
       case p of
         PredHtml -> isHtml t
         PredHtmlTagArg -> isHtml t || isAttributes t
-        PredPostResponse -> isHtml t || isPostFun t || isResponse t
-        PredResponse -> isHtml t || isResponse t
+        PredPostResponse -> isPostFun t || isResponseSubtype t
+        PredResponse -> isResponseSubtype t
         PredExact t' -> t == t'
         PredQuery -> isQuery t
         PredOrd -> t `elem` [TInt, TText, TTimestamp, TBool]
@@ -298,9 +289,9 @@ typeCheck p (At eSpan e) = do
         
     predExpected =
       case p of
-        PredHtml -> "HTML"
-        PredHtmlTagArg -> "HTML or HTML attributes"
-        PredPostResponse -> "HTML or POST function"
+        PredHtml -> "html"
+        PredHtmlTagArg -> "html or html attributes"
+        PredPostResponse -> "html or POST function"
         PredResponse -> "response"
         PredExact t -> typeName t
         PredFn _ _ -> "a function"
@@ -356,6 +347,15 @@ infer =
     Norm.ExpAbs (Norm.Annotated sym (Just t)) body ->
       (fmap (TFn t)) <$> introduce sym t (infer (discardLocation body))
 
+    Norm.ExpThen var a b ->
+      infer (discardLocation a) >>= \case
+      Just (TIO varT) -> maybe (infer (discardLocation b)) (\sym -> introduce sym varT (infer (discardLocation b))) var >>= \case
+        t@(Just (TIO _)) -> return t
+        Just t -> return (Just (TIO t))
+        Nothing -> return Nothing
+      Just t -> locatedFail (locatedSpan a) ("Expression has type '" <> typeName t <> "', but an 'io' action is expected")
+      Nothing -> return Nothing
+
     Norm.ExpRecord fields ->
       (fmap TRecord) <$> inferFields [] fields
 
@@ -404,6 +404,14 @@ infer =
             Norm.OpDiv -> (PredExact TInt, TInt)
             Norm.OpAnd -> (PredExact TBool, TBool)
             Norm.OpOr -> (PredExact TBool, TBool)
+
+    Norm.ExpInsert (At tableSpan tableName) value ->
+      lookupTable tableName >>= \case
+      Just table -> do
+        _ <- typeCheck (PredExact (tableRowType table)) value
+        return (Just (TIO TUnit))
+      Nothing ->
+        locatedFail tableSpan "Unknown table"
 
     Norm.ExpQLimit queryExp limitExp -> do
       queryType <- typeCheck PredQuery queryExp

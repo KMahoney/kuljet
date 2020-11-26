@@ -30,7 +30,7 @@ stdEnv =
   M.fromList
   [ (Symbol "redirect", (fn1 fRedirect, TFn TText TResponse))
   , (Symbol "file", (fn2 fFile, TFn TText (TFn TText TResponse)))
-  , (Symbol "now", (VAction fNow, TTimestamp))
+  , (Symbol "getTimestamp", (VAction fNow, TIO TTimestamp))
   , (Symbol "docType", (VHtml (HtmlEmitStr "<!DOCTYPE html>"), THtml))
   ]
 

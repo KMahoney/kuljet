@@ -175,7 +175,6 @@ interpret db env =
 
     AST.ExpVar (At _ var) ->
       case M.lookup var env of
-        Just (VAction value) -> value
         Just value -> return value
         Nothing -> error ("Type check error - missing '" <> T.unpack (symbolName var) <> "'")
 
@@ -207,6 +206,11 @@ interpret db env =
 
     AST.ExpAbs (AST.Annotated { AST.discardAnnotation = argName }) (At _ bodyExp) ->
       return $ VFn (\value -> interpret db (M.insert argName value env) bodyExp)
+
+    AST.ExpThen sym (At _ ioExp) (At _ bodyExp) -> do
+      ioValue <- interpret db env ioExp
+      value <- valueAsAction ioValue
+      interpret db (maybe env (\s -> M.insert s value env) sym) bodyExp
 
     AST.ExpList exps ->
       VList <$> mapM (interpret db env . discardLocation) exps
@@ -260,18 +264,17 @@ interpret db env =
             DB.SQLInteger i -> VInt (toInteger i)
             _ -> undefined -- TODO
 
-    AST.ExpInsert (At _ tableName) (At _ value) (At _ andThen) -> do
+    AST.ExpInsert (At _ tableName) (At _ value) -> do
       value' <- interpret db env value
-      insert tableName (M.toList (valueAsRecord value'))
-      interpret db env andThen
+      return $ VAction $ insert tableName $ M.toList $ valueAsRecord value'
 
       where
-        insert :: Symbol -> [(Symbol, Value)] -> IO ()
+        insert :: Symbol -> [(Symbol, Value)] -> IO Value
         insert (Symbol name) fields = do
           stmt <- DB.prepare db sql
           DB.bindNamed stmt fieldValues
           _ <- DB.step stmt
-          return ()
+          return VUnit
 
           where
             sql =

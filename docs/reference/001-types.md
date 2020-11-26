@@ -5,6 +5,7 @@ title: Types
 
 ## Basic Types
 
+- `unit`
 - `int`
 - `bool`
 - `text`
@@ -90,3 +91,10 @@ query { <field> : <type>, ... }
 
 The record type is the type of the query *row*, so the yield operator will
 transform a `query` into a `list`.
+
+
+## IO types
+
+IO types are written `io <type>` and represent an action which can
+be executed by the `<io-expression> [as <name>] then <expression>`
+form.

@@ -50,9 +50,14 @@ serve get / =
   in
   template [ messagesHtml, formHtml ]
 
+let insertMessage =
+  fun msg ->
+    getTimestamp as now then
+    insert messages { message = msg, timestamp = now }
+
 serve post /msg =
   fun formVars: { message: text } ->
-    insert messages { message = formVars.message, timestamp = now } then
+    insertMessage formVars.message then
     redirect "/"
 
 serve get /style.css =

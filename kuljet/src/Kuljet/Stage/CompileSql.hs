@@ -58,10 +58,11 @@ data Exp
   | ExpLiteral AST.Literal
   | ExpApp (Located Exp) (Located Exp)
   | ExpAbs (AST.Annotated Symbol) (Located Exp)
+  | ExpThen (Maybe Symbol) (Located Exp) (Located Exp)
   | ExpList [Located Exp]
   | ExpRecord [(Symbol, Located Exp)]
   | ExpDot (Located Exp) (Located Symbol)
-  | ExpInsert (Located Symbol) (Located Exp) (Located Exp)
+  | ExpInsert (Located Symbol) (Located Exp)
   | ExpYield (QB.Query, QueryArgs) (Located Exp)
   | ExpBinOp AST.BinOp (Located Exp) (Located Exp)
   | ExpIf (Located Exp) (Located Exp) (Located Exp)
@@ -125,6 +126,9 @@ compileExp (At eSpan e) =
     AST.ExpAbs arg body ->
       At eSpan <$> ExpAbs arg <$> compileExp body
 
+    AST.ExpThen sym a b ->
+      At eSpan <$> (ExpThen sym <$> compileExp a <*> compileExp b)
+
     AST.ExpList elems ->
       At eSpan <$> ExpList <$> mapM compileExp elems
 
@@ -134,8 +138,8 @@ compileExp (At eSpan e) =
     AST.ExpDot r fieldName ->
       At eSpan <$> flip ExpDot fieldName <$> compileExp r
 
-    AST.ExpInsert sym value next ->
-      At eSpan <$> (ExpInsert sym <$> compileExp value <*> compileExp next)
+    AST.ExpInsert sym value ->
+      At eSpan <$> (ExpInsert sym <$> compileExp value)
 
     AST.ExpYield a b ->
       At eSpan <$> (ExpYield <$> runStateT (compileQuery a) M.empty <*> compileExp b)
@@ -275,6 +279,10 @@ containsField env =
     AST.ExpAbs var (At _ a) ->
       containsField (S.delete (AST.discardAnnotation var) env) a
 
+    AST.ExpThen var (At _ a) (At _ b) ->
+      containsField env a ||
+      containsField (maybe env (\sym -> S.delete sym env) var) b
+
     AST.ExpList elems ->
       any (containsField env . discardLocation) elems
       
@@ -284,8 +292,8 @@ containsField env =
     AST.ExpDot (At _ a) _ ->
       containsField env a
       
-    AST.ExpInsert _ (At _ a) (At _ b) ->
-      containsField env a || containsField env b
+    AST.ExpInsert _ (At _ a) ->
+      containsField env a
       
     AST.ExpYield (At _ a) (At _ b) ->
       containsField env a || containsField env b

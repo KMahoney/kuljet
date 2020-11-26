@@ -90,11 +90,12 @@ data Exp
   | ExpApp (Located Exp) (Located Exp)
   | ExpAbs (Annotated Symbol) (Located Exp)
   | ExpLet Symbol (Located Exp) (Located Exp)
+  | ExpThen (Maybe Symbol) (Located Exp) (Located Exp)
   | ExpList [Located Exp]
   | ExpRecord [(Symbol, Located Exp)]
   | ExpParens Exp
   | ExpDot (Located Exp) (Located Symbol)
-  | ExpInsert (Located Symbol) (Located Exp) (Located Exp)
+  | ExpInsert (Located Symbol) (Located Exp)
   | ExpYield (Located Exp) (Located Exp)
   | ExpQLimit (Located Exp) (Located Exp)
   | ExpQOrder (Located Exp) (Located Exp) QOrder
@@ -175,22 +176,36 @@ method =
   
 
 expression :: Parsec Exp
-expression = insert <|> letInExpression
-
-
-insert :: Parsec Exp
-insert =
-  ExpInsert <$> (kwInsert *> parseLocated symbol) <*> parseLocated expression <*> (kwThen *> parseLocated expression)
+expression = letInExpression
 
 
 letInExpression :: Parsec Exp
-letInExpression = let_ <|> infixExpressions
+letInExpression = let_ <|> next
 
   where
+    next =
+      asThenExpression
+      
     let_ = ExpLet <$>
       (kwLet *> symbol) <*>
       (operator "=" *> parseLocated expression) <*>
       (kwIn *> parseLocated expression)
+
+
+asThenExpression :: Parsec Exp
+asThenExpression = do
+  e <- parseLocated next
+  recurse e <|> pure (discardLocation e)
+
+  where
+    next =
+      infixExpressions
+
+    recurse e1 = do
+      asSym <- optional (kwAs *> symbol)
+      kwThen
+      e2 <- parseLocated expression
+      return (ExpThen asSym e1 e2)
 
 
 -- FIXME: improve this
@@ -198,6 +213,7 @@ infixExpressions :: Parsec Exp
 infixExpressions = yields
 
   where
+          
     yields :: Parsec Exp
     yields = do
       start <- getPos
@@ -318,7 +334,7 @@ fields = do
 simpleExpression :: Parsec Exp
 simpleExpression =
   expecting "expression" $
-  parens <|> fn <|> ifExp <|> array <|> record <|> int <|> var <|> str
+  parens <|> fn <|> ifExp <|> array <|> record <|> insert <|> int <|> var <|> str
   
   where
     parens = ExpParens <$> (lParen *> expression <* rParen)
@@ -328,6 +344,8 @@ simpleExpression =
     str = ExpLiteral . LitStr <$> lexeme quotedString
     var = ExpVar <$> parseLocated symbol
     record = ExpRecord <$> (lCurly *> field `sepBy` comma <* rCurly)
+    insert = ExpInsert <$> (kwInsert *> parseLocated symbol) <*> parseLocated simpleExpression
+
     ifExp = ExpIf <$> (kwIf *> parseLocated expression)
                   <*> (kwThen *> parseLocated expression)
                   <*> (kwElse *> parseLocated expression)
@@ -435,7 +453,7 @@ rBracket = lexeme (char ']')
 
 
 kwServe, kwGet, kwPost, kwFun, kwLet, kwIn, kwTable :: Parsec ()
-kwInsert, kwThen, kwLimit, kwOrder, kwAsc, kwDesc :: Parsec ()
+kwInsert, kwThen, kwAs, kwLimit, kwOrder, kwAsc, kwDesc :: Parsec ()
 kwSelect, kwWhere, kwNatJoin, kwAnd, kwOr, kwIf, kwElse :: Parsec ()
 
 kwServe = keyword "serve"
@@ -447,6 +465,7 @@ kwIn = keyword "in"
 kwTable = keyword "table"
 kwInsert = keyword "insert"
 kwThen = keyword "then"
+kwAs = keyword "as"
 kwLimit = keyword "limit"
 kwOrder = keyword "order"
 kwAsc = keyword "asc"
@@ -463,7 +482,7 @@ kwElse = keyword "else"
 anyKeyword :: Parsec ()
 anyKeyword = foldr (<|>) empty
   [ kwServe, kwGet, kwPost, kwFun, kwLet, kwIn
-  , kwTable, kwInsert, kwThen, kwLimit, kwOrder, kwAsc, kwDesc
+  , kwTable, kwInsert, kwThen, kwAs, kwLimit, kwOrder, kwAsc, kwDesc
   , kwSelect, kwWhere, kwNatJoin, kwAnd, kwOr, kwIf, kwElse
   ]
 

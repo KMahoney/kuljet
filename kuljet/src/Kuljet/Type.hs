@@ -14,10 +14,12 @@ data Type
   | TInt
   | TResponse
   | TRecord [(Symbol, Type)]
+  | TIO Type
   | TFn Type Type
   | TQuery Type
   | TTimestamp
   | TBool
+  | TUnit
   deriving (Show, Eq)
 
 
@@ -31,6 +33,7 @@ typeName =
     TInt -> "int"
     TResponse -> "response"
     TList t -> "list " <> typeName t
+    TIO t -> "io " <> typeName t
     TRecord fields ->
       "{" <> T.intercalate ", " (map field fields) <> "}"
       where field (Symbol name, t) = name <> ": " <> typeName t
@@ -40,3 +43,4 @@ typeName =
       "query " <> typeName t
     TTimestamp -> "timestamp"
     TBool -> "bool"
+    TUnit -> "unit"

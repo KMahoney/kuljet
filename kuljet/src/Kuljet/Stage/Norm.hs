@@ -54,10 +54,11 @@ data Exp
   | ExpLiteral AST.Literal
   | ExpApp (Located Exp) (Located Exp)
   | ExpAbs (Annotated Symbol) (Located Exp)
+  | ExpThen (Maybe Symbol) (Located Exp) (Located Exp)
   | ExpList [Located Exp]
   | ExpRecord [(Symbol, Located Exp)]
   | ExpDot (Located Exp) (Located Symbol)
-  | ExpInsert (Located Symbol) (Located Exp) (Located Exp)
+  | ExpInsert (Located Symbol) (Located Exp)
   | ExpYield (Located Exp) (Located Exp)
   | ExpQLimit (Located Exp) (Located Exp)
   | ExpQOrder (Located Exp) (Located Exp) AST.QOrder
@@ -75,10 +76,11 @@ instance Show Exp where
       ExpLiteral (AST.LitInt i) -> show i
       ExpApp (At _ a) (At _ b) -> "(" ++ show a ++ " " ++ show b ++ ")"
       ExpAbs sym (At _ a) -> "(fun " ++ T.unpack (annotatedSym sym) ++ " -> " ++ show a ++ ")"
+      ExpThen sym (At _ a) (At _ b) -> show a ++ maybe "" ((" as " ++) . unpackSym) sym ++ " then " ++ show b
       ExpList elems -> "[" ++ intercalate "," (map show elems) ++ "]"
-      ExpRecord fields -> "{" ++ intercalate "," (map (\(sym, e) -> T.unpack (symbolName sym) ++ " = " ++ show e) fields) ++ "}"
+      ExpRecord fields -> "{" ++ intercalate "," (map (\(sym, e) -> unpackSym sym ++ " = " ++ show e) fields) ++ "}"
       ExpDot (At _ a) (At _ b) -> show a ++ "." ++ show b
-      ExpInsert (At _ sym) (At _ value) (At _ rest) -> "insert " <> T.unpack (symbolName sym) <> " " <> show value <> " then\n" <> show rest
+      ExpInsert (At _ sym) (At _ value) -> "(insert " <> unpackSym sym <> " " <> show value <> ")"
       ExpYield (At _ a) (At _ b) -> "(" ++ show a ++ " -> " ++ show b ++ ")"
       ExpQLimit (At _ a) (At _ b) -> "(" ++ show a ++ " limit " ++ show b ++ ")"
       ExpQOrder (At _ a) (At _ b) ord -> "(" ++ show a ++ " order " ++ show b ++ " " ++ showOrd ord ++ ")"
@@ -89,6 +91,9 @@ instance Show Exp where
       ExpIf (At _ a) (At _ b) (At _ c) -> "(if " ++ show a ++ " then " ++ show b ++ " else " ++ show c ++ ")"
 
     where
+      unpackSym =
+        T.unpack . symbolName
+        
       annotatedSym =
         \case
           Annotated {discardAnnotation = sym, annotation = Nothing} ->
@@ -159,6 +164,9 @@ expand =
     AST.ExpLet sym a b ->
       subst sym (expand (discardLocation a)) (expand (discardLocation b))
 
+    AST.ExpThen sym a b ->
+      ExpThen sym (fmap expand a) (fmap expand b)
+
     AST.ExpList elems ->
       ExpList (map (fmap expand) elems)
 
@@ -171,8 +179,8 @@ expand =
     AST.ExpParens subExp ->
       expand subExp
 
-    AST.ExpInsert sym value next ->
-      ExpInsert sym (fmap expand value) (fmap expand next)
+    AST.ExpInsert sym value ->
+      ExpInsert sym (fmap expand value)
 
     AST.ExpYield a b ->
       ExpYield (fmap expand a) (fmap expand b)
@@ -215,6 +223,9 @@ subst key value =
     ExpAbs sym absBody ->
       ExpAbs sym (if discardAnnotation sym /= key then fmap (subst key value) absBody else absBody)
       
+    ExpThen sym a b ->
+      ExpThen sym (fmap (subst key value) a) (if sym /= Just key then fmap (subst key value) b else b)
+
     ExpList elems ->
       ExpList (map (fmap (subst key value)) elems)
       
@@ -224,8 +235,8 @@ subst key value =
     ExpDot r fieldName ->
       ExpDot (fmap (subst key value) r) fieldName
 
-    ExpInsert sym a b ->
-      ExpInsert sym (fmap (subst key value) a) (fmap (subst key value) b)
+    ExpInsert sym a ->
+      ExpInsert sym (fmap (subst key value) a)
 
     ExpYield a b ->
       ExpYield (fmap (subst key value) a) (fmap (subst key value) b)
@@ -269,6 +280,9 @@ reduce =
       
     ExpAbs sym a ->
       ExpAbs sym (fmap reduce a)
+
+    ExpThen sym a b ->
+      ExpThen sym (fmap reduce a) (fmap reduce b)
       
     ExpList elems ->
       ExpList (map (fmap reduce) elems)
@@ -279,8 +293,8 @@ reduce =
     ExpDot r fieldName ->
       ExpDot (fmap reduce r) fieldName
 
-    ExpInsert sym a b ->
-      ExpInsert sym (fmap reduce a) (fmap reduce b)
+    ExpInsert sym a ->
+      ExpInsert sym (fmap reduce a)
 
     ExpYield a b ->
       ExpYield (fmap reduce a) (fmap reduce b)
