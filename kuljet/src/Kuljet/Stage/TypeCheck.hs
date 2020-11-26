@@ -265,7 +265,7 @@ typeCheck p (At eSpan e) = do
 
     isPostFun =
       \case
-        TFn (TRecord fields) ret -> all ((TText ==) . snd) fields && isHtml ret
+        TFn (TRecord fields) ret -> all ((TText ==) . snd) fields && (isHtml ret || isResponse ret)
         _ -> False
 
     isResponse =
