@@ -213,7 +213,7 @@ subst key value =
       ExpApp (fmap (subst key value) f) (fmap (subst key value) a)
       
     ExpAbs sym absBody ->
-      ExpAbs sym (fmap (subst key value) absBody)
+      ExpAbs sym (if discardAnnotation sym /= key then fmap (subst key value) absBody else absBody)
       
     ExpList elems ->
       ExpList (map (fmap (subst key value)) elems)
