@@ -1,5 +1,5 @@
 ---
-title: Basic Syntax
+title: Expressions
 ---
 
 Those who have seen an ML-based language before will find Kuljet's
