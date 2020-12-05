@@ -193,6 +193,10 @@ typeCheck p (At eSpan e) = do
 
         Norm.ExpAbs sym body ->
           case p of
+            PredExact (TCons "->" [argT, retT]) -> do
+              retT' <- introduce (Norm.discardAnnotation sym) argT (typeCheck (PredExact retT) body)
+              return (tFn argT retT')
+
             PredFn argT retPred -> do
               retT <- introduce (Norm.discardAnnotation sym) argT (typeCheck retPred body)
               return (tFn argT retT)
