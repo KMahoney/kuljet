@@ -19,11 +19,12 @@ import Kuljet.Value
 htmlTags :: [Symbol]
 htmlTags =
   map Symbol
-  [ "body", "html", "head", "link"
+  [ "body", "html", "head", "link", "nav"
   , "p", "div", "span", "a"
   , "strong", "em"
-  , "form", "input"
+  , "form", "input", "textarea", "label"
   , "ul", "ol", "li"
+  , "h1", "h2", "h3", "h4", "h5"
   ]
 
 
