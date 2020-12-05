@@ -119,6 +119,7 @@ instance Show Exp where
           AST.OpGtEq -> ">="
           AST.OpAnd -> "and"
           AST.OpOr -> "or"
+          AST.OpConcat -> "||"
 
 
 normalise :: AST.Module -> Module

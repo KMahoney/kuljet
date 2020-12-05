@@ -254,6 +254,7 @@ compileQueryExp env (At eSpan e) =
                 AST.OpGtEq -> ">="
                 AST.OpAnd -> "AND"
                 AST.OpOr -> "OR"
+                AST.OpConcat -> "||"
           
         _ ->
           lift (locatedFail eSpan "Cannot compile into query expression")

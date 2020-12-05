@@ -66,6 +66,8 @@ Compare with `=`, `<`, `>`, `<=` and `>=`.
 
 Combine Boolean values with `and` and `or`.
 
+Concatenate text with `||`.
+
 ```kuljet
 1 <= 2 and (3 = 3 + 1 or 3 = 3)
 ```

@@ -239,6 +239,7 @@ interpret db env =
         AST.OpGtEq -> return $ VBool $ partialCompare a' b' /= LT
         AST.OpAnd -> return $ VBool $ valueAsBool a' && valueAsBool b'
         AST.OpOr -> return $ VBool $ valueAsBool a' || valueAsBool b'
+        AST.OpConcat -> return $ VText $ valueAsText a' <> valueAsText b'
 
     AST.ExpIf a b c -> do
       a' <- interpret db env (discardLocation a)

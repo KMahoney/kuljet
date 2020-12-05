@@ -123,6 +123,7 @@ data BinOp
   | OpLtEq
   | OpAnd
   | OpOr
+  | OpConcat
   deriving (Show)
 
 data Literal
@@ -278,7 +279,7 @@ infixExpressions = yields
           [ (kwAnd >> pure OpAnd) <|> (kwOr >> pure OpOr)
           , (opP "=" OpEq)
           , (opP "<" OpLt) <|> (opP ">" OpGt) <|> (opP "<=" OpLtEq) <|> (opP ">=" OpGtEq)
-          , (opP "+" OpPlus) <|> (opP "-" OpMinus)
+          , (opP "+" OpPlus) <|> (opP "-" OpMinus) <|> (opP "||" OpConcat)
           , (opP "*" OpMul) <|> (opP "/" OpDiv)
           ]
     

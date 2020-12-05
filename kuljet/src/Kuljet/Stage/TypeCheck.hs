@@ -404,6 +404,7 @@ infer =
             Norm.OpDiv -> (PredExact TInt, TInt)
             Norm.OpAnd -> (PredExact TBool, TBool)
             Norm.OpOr -> (PredExact TBool, TBool)
+            Norm.OpConcat -> (PredExact TText, TText)
 
     Norm.ExpInsert (At tableSpan tableName) value ->
       lookupTable tableName >>= \case
