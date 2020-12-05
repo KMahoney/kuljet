@@ -23,6 +23,7 @@ data Value
   | VList { valueAsList :: [Value] }
   | VFn { valueAsFn :: Value -> IO Value }
   | VAction { valueAsAction :: IO Value }
+  | VMaybe { valueAsMaybe :: Maybe Value }
   | VUnit
 
 

@@ -59,3 +59,11 @@ addCookie : response -> text -> text -> response
 
 `addCookie <response> <key> <value>` adds a cookie to a response.
 </section>
+
+<section>
+```
+maybe : maybe 'a -> 'b -> ('a -> 'b) -> 'b
+```
+
+Branch on a `maybe` type.
+</section>

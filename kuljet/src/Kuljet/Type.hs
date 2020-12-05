@@ -48,6 +48,10 @@ tHtmlTagWithAttrs :: Type
 tHtmlTagWithAttrs = TCons "htmlTagWithAttrs" []
 
 
+tMaybe :: Type -> Type
+tMaybe t = TCons "maybe" [t]
+
+
 tList :: Type -> Type
 tList t = TCons "list" [t]
 

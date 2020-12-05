@@ -31,13 +31,21 @@ htmlTags =
 stdEnv :: M.Map Symbol (Value, Type)
 stdEnv =
   M.fromList
-  [ (Symbol "redirect", (fn1 fRedirect, tFn tText tResponse))
-  , (Symbol "file", (fn2 fFile, tFn tText (tFn tText tResponse)))
+  [ (Symbol "redirect", (fn1 fRedirect, tText --> tResponse))
+  , (Symbol "file", (fn2 fFile, tText --> tText --> tResponse))
   , (Symbol "getTimestamp", (VAction fNow, tIO tTimestamp))
   , (Symbol "docType", (VHtml (HtmlEmitStr "<!DOCTYPE html>"), tHtml))
   , (Symbol "genUUID", (VAction fUUID, tIO tText))
-  , (Symbol "addCookie", (fn3 fAddCookie, tFn tResponse (tFn tText (tFn tText tResponse))))
+  , (Symbol "addCookie", (fn3 fAddCookie, tResponse --> tText --> tText --> tResponse))
+  , (Symbol "maybe", (fn3 fMaybe, tMaybe v1 --> v0 --> (v1 --> v0) --> v0))
   ]
+
+  where
+    infixr -->
+    (-->) = tFn
+
+    v0 = TVar 0
+    v1 = TVar 1
 
 
 fn1 :: (Value -> IO Value) -> Value
@@ -127,3 +135,10 @@ fAddCookie responseValue nameValue valueValue =
 
     headers =
       (HTTP.hSetCookie, cookie) : responseHeaders response
+
+
+fMaybe :: Value -> Value -> Value -> IO Value
+fMaybe maybeValue defaultValue fValue =
+  case valueAsMaybe maybeValue of
+    Just v -> (valueAsFn fValue) v
+    Nothing -> return defaultValue
