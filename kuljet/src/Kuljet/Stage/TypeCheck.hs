@@ -24,7 +24,6 @@ import qualified Network.HTTP.Types.Method as Method
 import Control.Monad.Reader
 
 import qualified Kuljet.Stage.Norm as Norm
-import qualified Kuljet.Env as Env
 import qualified Kuljet.SourceError as Error
 import Kuljet.SourceError (Error(..))
 
@@ -125,8 +124,8 @@ isDbType :: Type -> Bool
 isDbType t = t `elem` [tText, tInt, tTimestamp]
 
 
-typeCheckModule :: Norm.Module -> Either Error Module
-typeCheckModule normalisedModule = do
+typeCheckModule :: M.Map Symbol Type -> Norm.Module -> Either Error Module
+typeCheckModule stdEnv normalisedModule = do
   tables <- mapM typeCheckTable normTables
   flip Module tables <$> mapM (typeCheckDecl tables) (Norm.moduleEndpoints normalisedModule)
 
@@ -157,13 +156,10 @@ typeCheckModule normalisedModule = do
     initialEnv tables servePath =
       Env { typeEnv = (<>) stdEnv $
                       M.fromList $
-                      map (\tag -> (tag, tHtmlTag)) Env.htmlTags ++
                       map (\table -> (tableName table, tQuery (tableRowType table))) tables ++
                       map (\pathVar -> (pathVar, tText)) (pathVars servePath)
           , tableEnv = M.fromList (map (\t -> (tableName t, t)) tables)
           }
-
-    stdEnv = fmap snd Env.stdEnv
 
     declType serveMethod =
       if serveMethod == Method.methodPost

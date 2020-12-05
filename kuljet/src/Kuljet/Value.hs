@@ -8,6 +8,7 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Time.Clock as Time
 
 import Kuljet.Symbol
+import Kuljet.InterpreterType
 import qualified Database.QueryBuilder as Query
 
 
@@ -21,8 +22,8 @@ data Value
   | VTimestamp { valueAsTimestamp :: Time.UTCTime }
   | VRecord { valueAsRecord :: (M.Map Symbol Value) }
   | VList { valueAsList :: [Value] }
-  | VFn { valueAsFn :: Value -> IO Value }
-  | VAction { valueAsAction :: IO Value }
+  | VFn { valueAsFn :: Value -> Interpreter Value }
+  | VAction { valueAsAction :: Interpreter Value }
   | VMaybe { valueAsMaybe :: Maybe Value }
   | VUnit
 

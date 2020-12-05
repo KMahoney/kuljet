@@ -10,10 +10,12 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Time.Clock as Time
 import qualified Data.UUID as UUID
 import qualified Data.UUID.V4 as UUID
+import Control.Monad.IO.Class
 
 import Kuljet.Symbol
 import Kuljet.Type
 import Kuljet.Value
+import Kuljet.InterpreterType
 
 
 htmlTags :: [Symbol]
@@ -30,17 +32,22 @@ htmlTags =
 
 stdEnv :: M.Map Symbol (Value, Type)
 stdEnv =
-  M.fromList
-  [ (Symbol "redirect", (fn1 fRedirect, tText --> tResponse))
-  , (Symbol "file", (fn2 fFile, tText --> tText --> tResponse))
-  , (Symbol "getTimestamp", (VAction fNow, tIO tTimestamp))
-  , (Symbol "docType", (VHtml (HtmlEmitStr "<!DOCTYPE html>"), tHtml))
-  , (Symbol "genUUID", (VAction fUUID, tIO tText))
-  , (Symbol "addCookie", (fn3 fAddCookie, tResponse --> tText --> tText --> tResponse))
-  , (Symbol "maybe", (fn3 fMaybe, tMaybe v1 --> v0 --> (v1 --> v0) --> v0))
-  ]
+  M.fromList (tagEnvList ++ stdEnvList)
 
   where
+    tagEnvList =
+      map (\tag -> (tag, (VHtml (HtmlEmitTag (symbolName tag)), tHtmlTag))) htmlTags
+
+    stdEnvList =
+      [ (Symbol "redirect", (fn1 fRedirect, tText --> tResponse))
+      , (Symbol "file", (fn2 fFile, tText --> tText --> tResponse))
+      , (Symbol "getTimestamp", (VAction fNow, tIO tTimestamp))
+      , (Symbol "docType", (VHtml (HtmlEmitStr "<!DOCTYPE html>"), tHtml))
+      , (Symbol "genUUID", (VAction fUUID, tIO tText))
+      , (Symbol "addCookie", (fn3 fAddCookie, tResponse --> tText --> tText --> tResponse))
+      , (Symbol "maybe", (fn3 fMaybe, tMaybe v1 --> v0 --> (v1 --> v0) --> v0))
+      ]
+
     infixr -->
     (-->) = tFn
 
@@ -48,19 +55,19 @@ stdEnv =
     v1 = TVar 1
 
 
-fn1 :: (Value -> IO Value) -> Value
+fn1 :: (Value -> Interpreter Value) -> Value
 fn1 = VFn
 
 
-fn2 :: (Value -> Value -> IO Value) -> Value
+fn2 :: (Value -> Value -> Interpreter Value) -> Value
 fn2 f = VFn (\arg1 -> return (VFn (\arg2 -> f arg1 arg2)))
 
 
-fn3 :: (Value -> Value -> Value -> IO Value) -> Value
+fn3 :: (Value -> Value -> Value -> Interpreter Value) -> Value
 fn3 f = VFn (\arg1 -> return (VFn (\arg2 -> return (VFn (\arg3 -> f arg1 arg2 arg3)))))
 
 
-fRedirect :: Value -> IO Value
+fRedirect :: Value -> Interpreter Value
 fRedirect locationValue =
   return $ VResponse (Response { responseStatus = HTTP.found302
                                , responseHeaders = [(HTTP.hLocation, T.encodeUtf8 location)]
@@ -71,9 +78,9 @@ fRedirect locationValue =
       valueAsText locationValue
 
 
-fFile :: Value -> Value -> IO Value
+fFile :: Value -> Value -> Interpreter Value
 fFile contentTypeValue filenameValue =
-  IO.catchIOError okRead errRead
+  liftIO (IO.catchIOError okRead errRead)
 
   where
     contentType =
@@ -112,17 +119,17 @@ fFile contentTypeValue filenameValue =
         }
 
 
-fNow :: IO Value
+fNow :: Interpreter Value
 fNow =
-  VTimestamp <$> Time.getCurrentTime
+  liftIO (VTimestamp <$> Time.getCurrentTime)
 
 
-fUUID :: IO Value
+fUUID :: Interpreter Value
 fUUID =
-  (VText . UUID.toText) <$> UUID.nextRandom
+  liftIO ((VText . UUID.toText) <$> UUID.nextRandom)
 
 
-fAddCookie :: Value -> Value -> Value -> IO Value
+fAddCookie :: Value -> Value -> Value -> Interpreter Value
 fAddCookie responseValue nameValue valueValue =
   return $ VResponse $ response { responseHeaders = headers }
 
@@ -137,7 +144,7 @@ fAddCookie responseValue nameValue valueValue =
       (HTTP.hSetCookie, cookie) : responseHeaders response
 
 
-fMaybe :: Value -> Value -> Value -> IO Value
+fMaybe :: Value -> Value -> Value -> Interpreter Value
 fMaybe maybeValue defaultValue fValue =
   case valueAsMaybe maybeValue of
     Just v -> (valueAsFn fValue) v

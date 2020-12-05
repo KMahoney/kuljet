@@ -11,11 +11,11 @@ import qualified Network.HTTP.Types.Status as HTTP
 import qualified Network.HTTP.Types.Method as Method
 import Network.HTTP.Types.Method (Method)
 import RangedParsec (Located(..))
+import Control.Monad.Reader
 
 import qualified Database.SQLite3 as DB
 
 import qualified Kuljet.Stage.CompileSql as AST
-import qualified Kuljet.Env as Env
 import qualified Kuljet.Query as Query
 import qualified Database.QueryBuilder as Query
 
@@ -23,6 +23,7 @@ import Kuljet.Symbol
 import qualified Kuljet.PathPattern as PathPattern
 import Kuljet.Type
 import Kuljet.Value
+import Kuljet.InterpreterType
 
 
 data InterpretedRoute
@@ -33,16 +34,16 @@ data InterpretedRoute
     }
 
 
-moduleInterpreter :: AST.Module -> [InterpretedRoute]
-moduleInterpreter typecheckedModule =
-  map (interpretEndpoint (AST.moduleTables typecheckedModule)) (AST.moduleEndpoints typecheckedModule)
+moduleInterpreter :: Env -> AST.Module -> [InterpretedRoute]
+moduleInterpreter stdEnv typecheckedModule =
+  map (interpretEndpoint stdEnv (AST.moduleTables typecheckedModule)) (AST.moduleEndpoints typecheckedModule)
 
 
-interpretEndpoint :: [AST.Table] -> AST.Endpoint -> InterpretedRoute
-interpretEndpoint tables (AST.Serve {AST.serveMethod, AST.servePath, AST.serveExp, AST.serveType}) =
+interpretEndpoint :: Env -> [AST.Table] -> AST.Endpoint -> InterpretedRoute
+interpretEndpoint stdEnv tables (AST.Serve {AST.serveMethod, AST.servePath, AST.serveExp, AST.serveType}) =
     InterpretedRoute { routeMethod = serveMethod
                      , routePath = servePath
-                     , routeRun = interpretServeBody serveMethod serveType tables (discardLocation serveExp)
+                     , routeRun = interpretServeBody stdEnv serveMethod serveType tables (discardLocation serveExp)
                      }
 
 
@@ -55,9 +56,9 @@ typeCheckFailure =
   error "The type checker has failed - this is a bug."
 
 
-interpretServeBody :: Method -> Type -> [AST.Table] -> AST.Exp -> DB.Database -> PathPattern.PathVars -> Wai.Application
-interpretServeBody method bodyType tables body db pathVars request respond = do
-  value <- interpret db initialEnv body
+interpretServeBody :: Env -> Method -> Type -> [AST.Table] -> AST.Exp -> DB.Database -> PathPattern.PathVars -> Wai.Application
+interpretServeBody stdEnv method bodyType tables body db pathVars request respond = do
+  value <- runReaderT (interpret initialEnv body) interpreterState
   if method == Method.methodPost
     then do
       case bodyType of
@@ -65,7 +66,7 @@ interpretServeBody method bodyType tables body db pathVars request respond = do
           (params, _) <- Wai.parseRequestBody Wai.lbsBackEnd request
           case paramsToRecord fields params of
             Right r -> do
-              value' <- (valueAsFn value) r
+              value' <- runReaderT (valueAsFn value r) interpreterState
               sendResponse (valueToResponse value')
   
             Left err ->
@@ -78,8 +79,8 @@ interpretServeBody method bodyType tables body db pathVars request respond = do
       sendResponse (valueToResponse value)
 
   where
-    htmlEnv =
-      M.fromList (map (\tag -> (tag, VHtml (HtmlEmitTag (symbolName tag)))) Env.htmlTags)
+    interpreterState =
+      InterpreterState db
 
     pathVarEnv =
       M.map VText pathVars
@@ -87,16 +88,13 @@ interpretServeBody method bodyType tables body db pathVars request respond = do
     tableEnv =
       M.fromList (map (\table -> (AST.tableName table, VQuery (tableQuery table))) tables)
 
-    stdEnv =
-      fmap fst Env.stdEnv
-
     tableQuery table =
       Query.queryTable
       (symbolName (AST.tableName table))
       (map (\(Symbol name, _) -> name) (AST.tableFields table))
 
     initialEnv =
-      stdEnv <> htmlEnv <> tableEnv <> pathVarEnv
+      stdEnv <> tableEnv <> pathVarEnv
 
     valueToResponse =
       \case
@@ -165,8 +163,8 @@ valueHtmlEmit =
       M.fromList [('&', "&amp;"), ('<', "&lt;"), ('>', "&gt;"), ('"', "&quot;")]
 
 
-interpret :: DB.Database -> Env -> AST.Exp -> IO Value
-interpret db env =
+interpret :: Env -> AST.Exp -> Interpreter Value
+interpret env =
   \case
     AST.ExpLiteral lit ->
       case lit of
@@ -179,8 +177,8 @@ interpret db env =
         Nothing -> error ("Type check error - missing '" <> T.unpack (symbolName var) <> "'")
 
     AST.ExpApp (At _ fExp) (At _ argExp) -> do
-      fExp' <- interpret db env fExp
-      argExp' <- interpret db env argExp
+      fExp' <- interpret env fExp
+      argExp' <- interpret env argExp
       case fExp' of
         VHtml (HtmlEmitTag tag) ->
           case argExp' of
@@ -205,28 +203,28 @@ interpret db env =
           typeCheckFailure
 
     AST.ExpAbs (AST.Annotated { AST.discardAnnotation = argName }) (At _ bodyExp) ->
-      return $ VFn (\value -> interpret db (M.insert argName value env) bodyExp)
+      return $ VFn (\value -> interpret (M.insert argName value env) bodyExp)
 
     AST.ExpThen sym (At _ ioExp) (At _ bodyExp) -> do
-      ioValue <- interpret db env ioExp
+      ioValue <- interpret env ioExp
       value <- valueAsAction ioValue
-      interpret db (maybe env (\s -> M.insert s value env) sym) bodyExp
+      interpret (maybe env (\s -> M.insert s value env) sym) bodyExp
 
     AST.ExpList exps ->
-      VList <$> mapM (interpret db env . discardLocation) exps
+      VList <$> mapM (interpret env . discardLocation) exps
 
     AST.ExpRecord fields ->
-      VRecord . M.fromList <$> mapM (\(key, value) -> (key,) <$> interpret db env (discardLocation value)) fields
+      VRecord . M.fromList <$> mapM (\(key, value) -> (key,) <$> interpret env (discardLocation value)) fields
         
     AST.ExpDot (At _ r) (At _ fieldName) -> do
-      fields <- valueAsRecord <$> interpret db env r
+      fields <- valueAsRecord <$> interpret env r
       case M.lookup fieldName fields of
         Just value -> return value
         Nothing -> typeCheckFailure
 
     AST.ExpBinOp op a b -> do
-      a' <- interpret db env (discardLocation a)
-      b' <- interpret db env (discardLocation b)
+      a' <- interpret env (discardLocation a)
+      b' <- interpret env (discardLocation b)
       case op of
         AST.OpEq -> return $ VBool $ partialEq a' b'
         AST.OpPlus -> return $ VInt $ valueAsInteger a' + valueAsInteger b'
@@ -242,15 +240,16 @@ interpret db env =
         AST.OpConcat -> return $ VText $ valueAsText a' <> valueAsText b'
 
     AST.ExpIf a b c -> do
-      a' <- interpret db env (discardLocation a)
+      a' <- interpret env (discardLocation a)
       if valueAsBool a'
-        then interpret db env (discardLocation b)
-        else interpret db env (discardLocation c)
+        then interpret env (discardLocation b)
+        else interpret env (discardLocation c)
       
     AST.ExpYield (query, queryArgs) yieldExp -> do
-      queryArgs' <- mapM (interpret db env) queryArgs
-      result <- Query.execute db query queryArgs'
-      VList <$> mapM (\row -> interpret db (M.union (rowToEnv row) env) (discardLocation yieldExp)) result
+      db <- asks isDatabase
+      queryArgs' <- mapM (interpret env) queryArgs
+      result <- liftIO (Query.execute db query queryArgs')
+      VList <$> mapM (\row -> interpret (M.union (rowToEnv row) env) (discardLocation yieldExp)) result
 
       where
         rowToEnv :: [(T.Text, DB.SQLData)] -> Env
@@ -266,15 +265,16 @@ interpret db env =
             _ -> undefined -- TODO
 
     AST.ExpInsert (At _ tableName) (At _ value) -> do
-      value' <- interpret db env value
+      value' <- interpret env value
       return $ VAction $ insert tableName $ M.toList $ valueAsRecord value'
 
       where
-        insert :: Symbol -> [(Symbol, Value)] -> IO Value
+        insert :: Symbol -> [(Symbol, Value)] -> Interpreter Value
         insert (Symbol name) fields = do
-          stmt <- DB.prepare db sql
-          DB.bindNamed stmt fieldValues
-          _ <- DB.step stmt
+          db <- asks isDatabase
+          stmt <- liftIO (DB.prepare db sql)
+          liftIO (DB.bindNamed stmt fieldValues)
+          _ <- liftIO (DB.step stmt)
           return VUnit
 
           where

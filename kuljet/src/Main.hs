@@ -21,6 +21,7 @@ import qualified Kuljet.Stage.CompileSql as Compile
 import qualified Kuljet.Interpret as Interpret
 import qualified Kuljet.SourceError as SourceError
 import qualified Kuljet.PathPattern as PathPattern
+import qualified Kuljet.Env as Env
 
 import qualified Database.SQLite3 as DB
 
@@ -111,7 +112,7 @@ loadFile filename = do
       Exit.exitFailure
       
     Right parsedMod ->
-      case TypeCheck.typeCheckModule (Norm.normalise parsedMod) >>= Compile.compileModule of
+      case TypeCheck.typeCheckModule (fmap snd Env.stdEnv) (Norm.normalise parsedMod) >>= Compile.compileModule of
         Left err -> do
           SourceError.putError err
           Exit.exitFailure
@@ -149,7 +150,7 @@ serve :: String -> Maybe String -> IO ()
 serve filename dbPath = do
   typecheckedModule <- loadFile filename
   db <- createDatabase (Maybe.fromMaybe (filename <> ".db") dbPath) (Compile.moduleTables typecheckedModule)
-  runInterpreter db (Interpret.moduleInterpreter typecheckedModule)
+  runInterpreter db (Interpret.moduleInterpreter (fmap fst Env.stdEnv) typecheckedModule)
 
 
 check :: String -> IO ()
