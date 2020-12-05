@@ -8,6 +8,8 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Time.Clock as Time
+import qualified Data.UUID as UUID
+import qualified Data.UUID.V4 as UUID
 
 import Kuljet.Symbol
 import Kuljet.Type
@@ -32,6 +34,7 @@ stdEnv =
   , (Symbol "file", (fn2 fFile, TFn TText (TFn TText TResponse)))
   , (Symbol "getTimestamp", (VAction fNow, TIO TTimestamp))
   , (Symbol "docType", (VHtml (HtmlEmitStr "<!DOCTYPE html>"), THtml))
+  , (Symbol "genUUID", (VAction fUUID, TIO TText))
   ]
 
 
@@ -98,3 +101,8 @@ fFile contentTypeValue filenameValue =
 fNow :: IO Value
 fNow =
   VTimestamp <$> Time.getCurrentTime
+
+
+fUUID :: IO Value
+fUUID =
+  (VText . UUID.toText) <$> UUID.nextRandom

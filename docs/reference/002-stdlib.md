@@ -43,3 +43,11 @@ docType : html
 
 The HTML `<!DOCTYPE html>` declaration
 </section>
+
+<section>
+```
+genUUID : io text
+```
+
+Generates a unique UUID v4 string
+</section>
