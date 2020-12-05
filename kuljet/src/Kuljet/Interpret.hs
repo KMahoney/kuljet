@@ -250,7 +250,7 @@ interpret db env =
     AST.ExpYield (query, queryArgs) yieldExp -> do
       queryArgs' <- mapM (interpret db env) queryArgs
       result <- Query.execute db query queryArgs'
-      VList <$> mapM (\row -> interpret db (M.union env (rowToEnv row)) (discardLocation yieldExp)) result
+      VList <$> mapM (\row -> interpret db (M.union (rowToEnv row) env) (discardLocation yieldExp)) result
 
       where
         rowToEnv :: [(T.Text, DB.SQLData)] -> Env
