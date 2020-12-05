@@ -54,6 +54,14 @@ Generates a unique UUID v4 string
 
 <section>
 ```
+cookie : text -> maybe text
+```
+
+Retrieve the contents of a browser cookie.
+</section>
+
+<section>
+```
 addCookie : response -> text -> text -> response
 ```
 

@@ -80,7 +80,7 @@ interpretServeBody stdEnv method bodyType tables body db pathVars request respon
 
   where
     interpreterState =
-      InterpreterState db
+      InterpreterState db request
 
     pathVarEnv =
       M.map VText pathVars

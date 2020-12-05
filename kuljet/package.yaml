@@ -42,6 +42,7 @@ executables:
     - http-types
     - wai
     - wai-extra
+    - cookie
     - warp
     - direct-sqlite
     - unix

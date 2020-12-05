@@ -2,15 +2,19 @@ module Kuljet.Env where
 
 import qualified System.IO.Error as IO
 import qualified Data.Map as M
+import qualified Data.List as List
+import qualified Network.Wai as Wai
 import qualified Network.HTTP.Types.Status as HTTP
 import qualified Network.HTTP.Types.Header as HTTP
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Time.Clock as Time
 import qualified Data.UUID as UUID
 import qualified Data.UUID.V4 as UUID
-import Control.Monad.IO.Class
+import Control.Monad.Reader
+import qualified Web.Cookie as Cookie
 
 import Kuljet.Symbol
 import Kuljet.Type
@@ -45,6 +49,7 @@ stdEnv =
       , (Symbol "docType", (VHtml (HtmlEmitStr "<!DOCTYPE html>"), tHtml))
       , (Symbol "genUUID", (VAction fUUID, tIO tText))
       , (Symbol "addCookie", (fn3 fAddCookie, tResponse --> tText --> tText --> tResponse))
+      , (Symbol "cookie", (fn1 fCookie, tText --> tMaybe tText))
       , (Symbol "maybe", (fn3 fMaybe, tMaybe v1 --> v0 --> (v1 --> v0) --> v0))
       ]
 
@@ -142,6 +147,25 @@ fAddCookie responseValue nameValue valueValue =
 
     headers =
       (HTTP.hSetCookie, cookie) : responseHeaders response
+
+
+fCookie :: Value -> Interpreter Value
+fCookie nameValue = do
+  request <- asks isRequest
+  return $ VMaybe $ VText <$> findCookie request (valueAsText nameValue)
+
+  where
+    findCookie :: Wai.Request -> T.Text -> Maybe T.Text
+    findCookie request name =
+      (snd <$> List.find (\(k, _) -> safeDecode k == Just name) (cookies request)) >>= safeDecode
+
+    cookies :: Wai.Request -> Cookie.Cookies
+    cookies request =
+      concatMap (\(hName, hValue) -> if hName == HTTP.hCookie then Cookie.parseCookies hValue else []) (Wai.requestHeaders request)
+
+    safeDecode :: BS.ByteString -> Maybe T.Text
+    safeDecode bs =
+      either (const Nothing) Just (T.decodeUtf8' bs)
 
 
 fMaybe :: Value -> Value -> Value -> Interpreter Value
