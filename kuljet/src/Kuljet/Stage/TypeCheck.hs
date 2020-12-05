@@ -17,6 +17,7 @@ module Kuljet.Stage.TypeCheck
 
 import qualified Data.Map as M
 import qualified Data.Text as T
+import qualified Data.Maybe as Maybe
 import RangedParsec (Located(..), SourceSpan)
 import Network.HTTP.Types.Method (Method)
 import qualified Network.HTTP.Types.Method as Method
@@ -280,7 +281,7 @@ typeCheck p (At eSpan e) = do
         PredHtmlTagArg -> isHtml t || isAttributes t
         PredPostResponse -> isPostFun t || isResponseSubtype t
         PredResponse -> isResponseSubtype t
-        PredExact t' -> t == t'
+        PredExact t' -> Maybe.isJust (matchType t' t)
         PredQuery -> isQuery t
         PredOrd -> t `elem` [tInt, tText, tTimestamp, tBool]
         PredProject -> isProject t
@@ -335,8 +336,10 @@ infer =
           return (Just tHtml)
 
         Just (TCons "->" [argT, retT]) -> do
-          _ <- typeCheck (PredExact argT) arg
-          return (Just retT)
+          argT' <- typeCheck (PredExact argT) arg
+          case matchType argT argT' of
+            Just subst -> return (Just (applySubst subst retT))
+            Nothing -> locatedFail (locatedSpan arg) ("Expression is " <> typeName argT' <> ", but expecting " <> typeName argT)
 
         Just t ->
           locatedFail (locatedSpan f) ("Expression has type '" <> typeName t <> "', but a function is expected")
