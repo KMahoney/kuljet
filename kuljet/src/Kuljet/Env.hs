@@ -31,12 +31,12 @@ htmlTags =
 stdEnv :: M.Map Symbol (Value, Type)
 stdEnv =
   M.fromList
-  [ (Symbol "redirect", (fn1 fRedirect, TFn TText TResponse))
-  , (Symbol "file", (fn2 fFile, TFn TText (TFn TText TResponse)))
-  , (Symbol "getTimestamp", (VAction fNow, TIO TTimestamp))
-  , (Symbol "docType", (VHtml (HtmlEmitStr "<!DOCTYPE html>"), THtml))
-  , (Symbol "genUUID", (VAction fUUID, TIO TText))
-  , (Symbol "addCookie", (fn3 fAddCookie, TFn TResponse (TFn TText (TFn TText TResponse))))
+  [ (Symbol "redirect", (fn1 fRedirect, tFn tText tResponse))
+  , (Symbol "file", (fn2 fFile, tFn tText (tFn tText tResponse)))
+  , (Symbol "getTimestamp", (VAction fNow, tIO tTimestamp))
+  , (Symbol "docType", (VHtml (HtmlEmitStr "<!DOCTYPE html>"), tHtml))
+  , (Symbol "genUUID", (VAction fUUID, tIO tText))
+  , (Symbol "addCookie", (fn3 fAddCookie, tFn tResponse (tFn tText (tFn tText tResponse))))
   ]
 
 

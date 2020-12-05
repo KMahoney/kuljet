@@ -95,9 +95,9 @@ createDatabase filename tables = do
     sqlType :: Type -> T.Text
     sqlType =
       \case
-        TText -> "text"
-        TInt -> "int"
-        TTimestamp -> "timestamp"
+        TCons "text" [] -> "text"
+        TCons "int" [] -> "int"
+        TCons "timestamp" [] -> "timestamp"
         _ -> error "Invalid field type"
 
 

@@ -61,7 +61,7 @@ interpretServeBody method bodyType tables body db pathVars request respond = do
   if method == Method.methodPost
     then do
       case bodyType of
-        TFn (TRecord fields) _ -> do
+        TCons "->" [TRecord fields, _] -> do
           (params, _) <- Wai.parseRequestBody Wai.lbsBackEnd request
           case paramsToRecord fields params of
             Right r -> do

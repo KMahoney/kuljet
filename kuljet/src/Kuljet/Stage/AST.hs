@@ -371,16 +371,16 @@ typeDecl = expecting "type declartion" $
     simpleType = do
       sym <- symbol
       case symbolName sym of
-        "html" -> return THtml
-        "htmlTag" -> return THtmlTag
-        "htmlTagAttrs" -> return THtmlTagWithAttrs
-        "text" -> return TText
-        "int" -> return TInt
-        "timestamp" -> return TTimestamp
+        "html" -> return tHtml
+        "htmlTag" -> return tHtmlTag
+        "htmlTagAttrs" -> return tHtmlTagWithAttrs
+        "text" -> return tText
+        "int" -> return tInt
+        "timestamp" -> return tTimestamp
         name -> parseError (S.singleton ("unknown type '" <> name <> "'"))
 
     listType =
-      TList <$> (lBracket *> typeDecl <* rBracket)
+      tList <$> (lBracket *> typeDecl <* rBracket)
 
     recordType =
       TRecord <$> (lCurly *> field `sepBy` comma <* rCurly)

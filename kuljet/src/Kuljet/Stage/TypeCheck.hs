@@ -121,7 +121,7 @@ lookupTable name =
 
 
 isDbType :: Type -> Bool
-isDbType t = t `elem` [TText, TInt, TTimestamp]
+isDbType t = t `elem` [tText, tInt, tTimestamp]
 
 
 typeCheckModule :: Norm.Module -> Either Error Module
@@ -156,9 +156,9 @@ typeCheckModule normalisedModule = do
     initialEnv tables servePath =
       Env { typeEnv = (<>) stdEnv $
                       M.fromList $
-                      map (\tag -> (tag, THtmlTag)) Env.htmlTags ++
-                      map (\table -> (tableName table, TQuery (tableRowType table))) tables ++
-                      map (\pathVar -> (pathVar, TText)) (pathVars servePath)
+                      map (\tag -> (tag, tHtmlTag)) Env.htmlTags ++
+                      map (\table -> (tableName table, tQuery (tableRowType table))) tables ++
+                      map (\pathVar -> (pathVar, tText)) (pathVars servePath)
           , tableEnv = M.fromList (map (\t -> (tableName t, t)) tables)
           }
 
@@ -184,8 +184,8 @@ typeCheck p (At eSpan e) = do
         Norm.ExpYield queryExp yielder -> do
           queryType <- typeCheck PredQuery queryExp
           case queryType of
-            TQuery (TRecord fields) ->
-              TList <$> withTypeEnv (\env -> M.union env (M.fromList fields)) (typeCheck p yielder)
+            TCons "query" [TRecord fields] ->
+              tList <$> withTypeEnv (\env -> M.union env (M.fromList fields)) (typeCheck p yielder)
               
             _ ->
               locatedFail (locatedSpan queryExp) "Expecting a query"
@@ -194,13 +194,13 @@ typeCheck p (At eSpan e) = do
           case p of
             PredFn argT retPred -> do
               retT <- introduce (Norm.discardAnnotation sym) argT (typeCheck retPred body)
-              return (TFn argT retT)
+              return (tFn argT retT)
 
             PredPostResponse ->
               case sym of
                 Norm.Annotated argName (Just argT) -> do
                   retT <- introduce argName argT (typeCheck PredResponse body)
-                  return (TFn argT retT)
+                  return (tFn argT retT)
 
                 _ ->
                   locatedFail eSpan "Type annotation required"
@@ -213,22 +213,22 @@ typeCheck p (At eSpan e) = do
           if isHtmlPred
           then do
             mapM_ (typeCheck PredHtml) exps
-            return (TList THtml)
+            return (tList tHtml)
           else case p of
-            PredExact (TList t) -> do
+            PredExact (TCons "list" [t]) -> do
               mapM_ (typeCheck (PredExact t)) exps
-              return (TList t)
+              return (tList t)
 
             _ ->
               locatedFail eSpan ("Expression is a list, but expected " <> predExpected)
 
         Norm.ExpIf a b c -> do
-          _ <- typeCheck (PredExact TBool) a
+          _ <- typeCheck (PredExact tBool) a
           if isHtmlPred
             then do
               _ <- typeCheck PredHtml b
               _ <- typeCheck PredHtml c
-              return THtml
+              return tHtml
 
             else case p of
               PredExact t -> do
@@ -244,29 +244,29 @@ typeCheck p (At eSpan e) = do
 
   where
     isHtml t =
-      t `elem` [THtmlTag, THtmlTagWithAttrs, THtml, TText, TInt]
+      t `elem` [tHtmlTag, tHtmlTagWithAttrs, tHtml, tText, tInt]
 
     isHtmlPred =
       p `elem` [PredHtml, PredHtmlTagArg, PredResponse, PredPostResponse]
 
     isAttributes =
       \case
-        TRecord fields -> all ((TText ==) . snd) fields
+        TRecord fields -> all ((tText ==) . snd) fields
         _ -> False
 
     isPostFun =
       \case
-        TFn (TRecord fields) ret -> all ((TText ==) . snd) fields && isResponseSubtype ret
+        TCons "->" [TRecord fields, ret] -> all ((tText ==) . snd) fields && isResponseSubtype ret
         _ -> False
 
     isResponseSubtype =
       \case
-        TIO t -> t == TResponse || isHtml t
-        t -> t == TResponse || isHtml t
+        TCons "io" [t] -> t == tResponse || isHtml t
+        t -> t == tResponse || isHtml t
 
     isQuery =
       \case
-        TQuery _ -> True
+        TCons "query" _ -> True
         _ -> False
 
     isProject =
@@ -282,9 +282,9 @@ typeCheck p (At eSpan e) = do
         PredResponse -> isResponseSubtype t
         PredExact t' -> t == t'
         PredQuery -> isQuery t
-        PredOrd -> t `elem` [TInt, TText, TTimestamp, TBool]
+        PredOrd -> t `elem` [tInt, tText, tTimestamp, tBool]
         PredProject -> isProject t
-        PredCompare -> t `elem` [TInt, TText, TTimestamp, TBool] -- TODO records, lists
+        PredCompare -> t `elem` [tInt, tText, tTimestamp, tBool] -- TODO records, lists
         _ -> False
         
     predExpected =
@@ -307,8 +307,8 @@ infer =
     Norm.ExpLiteral lit ->
       let t =
             case lit of
-              Norm.LitStr _ -> TText
-              Norm.LitInt _ -> TInt
+              Norm.LitStr _ -> tText
+              Norm.LitInt _ -> tInt
       in
       return (Just t)
 
@@ -324,17 +324,17 @@ infer =
     Norm.ExpApp f arg -> do
       fType <- infer (discardLocation f)
       case fType of
-        Just THtmlTag -> do
+        Just (TCons "htmlTag" []) -> do
           argType <- typeCheck PredHtmlTagArg arg
           case argType of
-            TRecord _ -> return (Just THtmlTagWithAttrs)
-            _ -> return (Just THtml)
+            TRecord _ -> return (Just tHtmlTagWithAttrs)
+            _ -> return (Just tHtml)
 
-        Just THtmlTagWithAttrs -> do
+        Just (TCons "htmlTagWithAttrs" []) -> do
           _ <- typeCheck PredHtml arg
-          return (Just THtml)
+          return (Just tHtml)
 
-        Just (TFn argT retT) -> do
+        Just (TCons "->" [argT, retT]) -> do
           _ <- typeCheck (PredExact argT) arg
           return (Just retT)
 
@@ -345,13 +345,13 @@ infer =
           return Nothing
 
     Norm.ExpAbs (Norm.Annotated sym (Just t)) body ->
-      (fmap (TFn t)) <$> introduce sym t (infer (discardLocation body))
+      (fmap (tFn t)) <$> introduce sym t (infer (discardLocation body))
 
     Norm.ExpThen var a b ->
       infer (discardLocation a) >>= \case
-      Just (TIO varT) -> maybe (infer (discardLocation b)) (\sym -> introduce sym varT (infer (discardLocation b))) var >>= \case
-        t@(Just (TIO _)) -> return t
-        Just t -> return (Just (TIO t))
+      Just (TCons "io" [varT]) -> maybe (infer (discardLocation b)) (\sym -> introduce sym varT (infer (discardLocation b))) var >>= \case
+        t@(Just (TCons "io" _)) -> return t
+        Just t -> return (Just (tIO t))
         Nothing -> return Nothing
       Just t -> locatedFail (locatedSpan a) ("Expression has type '" <> typeName t <> "', but an 'io' action is expected")
       Nothing -> return Nothing
@@ -393,37 +393,37 @@ infer =
       where
         (opPred, opRetT) =
           case op of
-            Norm.OpEq -> (PredCompare, TBool)
-            Norm.OpLt -> (PredOrd, TBool)
-            Norm.OpGt -> (PredOrd, TBool)
-            Norm.OpLtEq -> (PredOrd, TBool)
-            Norm.OpGtEq -> (PredOrd, TBool)
-            Norm.OpPlus -> (PredExact TInt, TInt)
-            Norm.OpMinus -> (PredExact TInt, TInt)
-            Norm.OpMul -> (PredExact TInt, TInt)
-            Norm.OpDiv -> (PredExact TInt, TInt)
-            Norm.OpAnd -> (PredExact TBool, TBool)
-            Norm.OpOr -> (PredExact TBool, TBool)
-            Norm.OpConcat -> (PredExact TText, TText)
+            Norm.OpEq -> (PredCompare, tBool)
+            Norm.OpLt -> (PredOrd, tBool)
+            Norm.OpGt -> (PredOrd, tBool)
+            Norm.OpLtEq -> (PredOrd, tBool)
+            Norm.OpGtEq -> (PredOrd, tBool)
+            Norm.OpPlus -> (PredExact tInt, tInt)
+            Norm.OpMinus -> (PredExact tInt, tInt)
+            Norm.OpMul -> (PredExact tInt, tInt)
+            Norm.OpDiv -> (PredExact tInt, tInt)
+            Norm.OpAnd -> (PredExact tBool, tBool)
+            Norm.OpOr -> (PredExact tBool, tBool)
+            Norm.OpConcat -> (PredExact tText, tText)
 
     Norm.ExpInsert (At tableSpan tableName) value ->
       lookupTable tableName >>= \case
       Just table -> do
         _ <- typeCheck (PredExact (tableRowType table)) value
-        return (Just (TIO TUnit))
+        return (Just (tIO tUnit))
       Nothing ->
         locatedFail tableSpan "Unknown table"
 
     Norm.ExpQLimit queryExp limitExp -> do
       queryType <- typeCheck PredQuery queryExp
-      _ <- typeCheck (PredExact TInt) limitExp
+      _ <- typeCheck (PredExact tInt) limitExp
       return (Just queryType)
 
     Norm.ExpQWhere queryExp whereExp -> do
       queryType <- typeCheck PredQuery queryExp
       case queryType of
-        TQuery (TRecord fields) -> do
-          _ <- withTypeEnv (\env -> M.union env (M.fromList fields)) (typeCheck (PredExact TBool) whereExp)
+        TCons "query" [TRecord fields] -> do
+          _ <- withTypeEnv (\env -> M.union env (M.fromList fields)) (typeCheck (PredExact tBool) whereExp)
           return (Just queryType)
 
         _ ->
@@ -438,12 +438,12 @@ infer =
         then locatedFail (locatedSpan b) "Right query does not have fields in command with left query"
         else do
         mapM_ checkFieldType (M.toList fieldsIntersect)
-        return $ Just $ TQuery $ TRecord fieldsUnion
+        return $ Just $ tQuery $ TRecord fieldsUnion
 
       where
         asFields loc =
           \case
-            TQuery (TRecord fields) ->
+            TCons "query" [TRecord fields] ->
               return fields
 
             _ ->
@@ -458,8 +458,8 @@ infer =
     Norm.ExpQSelect queryExp selectExp -> do
       queryType <- typeCheck PredQuery queryExp
       case queryType of
-        TQuery (TRecord fields) ->
-          (Just . TQuery) <$> withTypeEnv (\env -> M.union env (M.fromList fields)) (typeCheck PredProject selectExp)
+        TCons "query" [TRecord fields] ->
+          (Just . TCons "query" . return) <$> withTypeEnv (\env -> M.union env (M.fromList fields)) (typeCheck PredProject selectExp)
 
         _ ->
           locatedFail (locatedSpan queryExp) "Expecting a query"
@@ -467,7 +467,7 @@ infer =
     Norm.ExpQOrder queryExp orderExp _ -> do
       queryType <- typeCheck PredQuery queryExp
       case queryType of
-        TQuery (TRecord fields) -> do
+        TCons "query" [TRecord fields] -> do
           _ <- withTypeEnv (\env -> M.union env (M.fromList fields)) (typeCheck PredOrd orderExp)
           return (Just queryType)
               

@@ -6,41 +6,70 @@ import Kuljet.Symbol
 
 
 data Type
-  = THtmlTag
-  | THtmlTagWithAttrs
-  | THtml
-  | TList Type
-  | TText
-  | TInt
-  | TResponse
+  = TCons T.Text [Type]
   | TRecord [(Symbol, Type)]
-  | TIO Type
-  | TFn Type Type
-  | TQuery Type
-  | TTimestamp
-  | TBool
-  | TUnit
   deriving (Show, Eq)
+
+
+tUnit :: Type
+tUnit = TCons "unit" []
+
+
+tBool :: Type
+tBool = TCons "bool" []
+
+
+tText :: Type
+tText = TCons "text" []
+
+
+tInt :: Type
+tInt = TCons "int" []
+
+
+tTimestamp :: Type
+tTimestamp = TCons "timestamp" []
+
+
+tHtml :: Type
+tHtml = TCons "html" []
+
+
+tHtmlTag :: Type
+tHtmlTag = TCons "htmlTag" []
+
+
+tHtmlTagWithAttrs :: Type
+tHtmlTagWithAttrs = TCons "htmlTagWithAttrs" []
+
+
+tList :: Type -> Type
+tList t = TCons "list" [t]
+
+
+tResponse :: Type
+tResponse = TCons "response" []
+
+
+tIO :: Type -> Type
+tIO t = TCons "io" [t]
+
+
+tFn :: Type -> Type -> Type
+tFn t1 t2 = TCons "->" [t1, t2]
+
+
+tQuery :: Type -> Type
+tQuery t = TCons "query" [t]
 
 
 typeName :: Type -> T.Text
 typeName =
   \case
-    THtmlTag -> "htmlTag"
-    THtmlTagWithAttrs -> "htmlTagAttrs"
-    THtml -> "html"
-    TText -> "text"
-    TInt -> "int"
-    TResponse -> "response"
-    TList t -> "list " <> typeName t
-    TIO t -> "io " <> typeName t
     TRecord fields ->
       "{" <> T.intercalate ", " (map field fields) <> "}"
       where field (Symbol name, t) = name <> ": " <> typeName t
-    TFn dom rng ->
+    TCons "->" [dom, rng] ->
       typeName dom <> " -> " <> typeName rng
-    TQuery t ->
-      "query " <> typeName t
-    TTimestamp -> "timestamp"
-    TBool -> "bool"
-    TUnit -> "unit"
+    TCons name ts ->
+      name <> (T.concat (map ((" " <>) . typeName) ts))
