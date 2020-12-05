@@ -51,3 +51,11 @@ genUUID : io text
 
 Generates a unique UUID v4 string
 </section>
+
+<section>
+```
+addCookie : response -> text -> text -> response
+```
+
+`addCookie <response> <key> <value>` adds a cookie to a response.
+</section>

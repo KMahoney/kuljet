@@ -36,6 +36,7 @@ stdEnv =
   , (Symbol "getTimestamp", (VAction fNow, TIO TTimestamp))
   , (Symbol "docType", (VHtml (HtmlEmitStr "<!DOCTYPE html>"), THtml))
   , (Symbol "genUUID", (VAction fUUID, TIO TText))
+  , (Symbol "addCookie", (fn3 fAddCookie, TFn TResponse (TFn TText (TFn TText TResponse))))
   ]
 
 
@@ -45,6 +46,10 @@ fn1 = VFn
 
 fn2 :: (Value -> Value -> IO Value) -> Value
 fn2 f = VFn (\arg1 -> return (VFn (\arg2 -> f arg1 arg2)))
+
+
+fn3 :: (Value -> Value -> Value -> IO Value) -> Value
+fn3 f = VFn (\arg1 -> return (VFn (\arg2 -> return (VFn (\arg3 -> f arg1 arg2 arg3)))))
 
 
 fRedirect :: Value -> IO Value
@@ -107,3 +112,18 @@ fNow =
 fUUID :: IO Value
 fUUID =
   (VText . UUID.toText) <$> UUID.nextRandom
+
+
+fAddCookie :: Value -> Value -> Value -> IO Value
+fAddCookie responseValue nameValue valueValue =
+  return $ VResponse $ response { responseHeaders = headers }
+
+  where
+    response =
+      valueAsResponse responseValue
+
+    cookie =
+      T.encodeUtf8 (valueAsText nameValue <> "=" <> valueAsText valueValue <> "; Path=/;")
+
+    headers =
+      (HTTP.hSetCookie, cookie) : responseHeaders response
