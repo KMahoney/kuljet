@@ -17,7 +17,6 @@ module Kuljet.Stage.AST
   ) where
 
 import qualified Data.Text as T
-import qualified Data.Set as S
 import qualified Data.Maybe as Maybe
 
 import Network.HTTP.Types.Method (Method)
@@ -94,6 +93,7 @@ data Exp
   | ExpList [Located Exp]
   | ExpRecord [(Symbol, Located Exp)]
   | ExpParens Exp
+  | ExpAnnotated (Located Exp) Type
   | ExpDot (Located Exp) (Located Symbol)
   | ExpInsert (Located Symbol) (Located Exp)
   | ExpYield (Located Exp) (Located Exp)
@@ -200,7 +200,7 @@ asThenExpression = do
 
   where
     next =
-      infixExpressions
+      typeAnnotation
 
     recurse e1 = do
       asSym <- optional (kwAs *> symbol)
@@ -209,12 +209,26 @@ asThenExpression = do
       return (ExpThen asSym e1 e2)
 
 
+typeAnnotation :: Parsec Exp
+typeAnnotation = do
+  e <- parseLocated next
+  recurse e <|> pure (discardLocation e)
+
+  where
+    next =
+      infixExpressions
+
+    recurse e1 = do
+      operator ":"
+      t <- typeDecl
+      return (ExpAnnotated e1 t)
+
+
 -- FIXME: improve this
 infixExpressions :: Parsec Exp
 infixExpressions = yields
 
   where
-          
     yields :: Parsec Exp
     yields = do
       start <- getPos
@@ -365,22 +379,12 @@ annotatedSymbol =
 
 typeDecl :: Parsec Type
 typeDecl = expecting "type declartion" $
-  simpleType <|> listType <|> recordType
+  recordType <|> simpleType
 
   where
     simpleType = do
-      sym <- symbol
-      case symbolName sym of
-        "html" -> return tHtml
-        "htmlTag" -> return tHtmlTag
-        "htmlTagAttrs" -> return tHtmlTagWithAttrs
-        "text" -> return tText
-        "int" -> return tInt
-        "timestamp" -> return tTimestamp
-        name -> parseError (S.singleton ("unknown type '" <> name <> "'"))
-
-    listType =
-      tList <$> (lBracket *> typeDecl <* rBracket)
+      (Symbol tName) <- symbol
+      return (TCons tName [])
 
     recordType =
       TRecord <$> (lCurly *> field `sepBy` comma <* rCurly)

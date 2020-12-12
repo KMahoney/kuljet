@@ -132,6 +132,9 @@ compileExp (At eSpan e) =
     AST.ExpList elems ->
       At eSpan <$> ExpList <$> mapM compileExp elems
 
+    AST.ExpAnnotated a _ ->
+      compileExp a
+
     AST.ExpRecord fields ->
       At eSpan <$> ExpRecord <$> mapM (\(fs, fe) -> (fs,) <$> compileExp fe) fields
 
@@ -286,6 +289,9 @@ containsField env =
 
     AST.ExpList elems ->
       any (containsField env . discardLocation) elems
+
+    AST.ExpAnnotated e _ ->
+      containsField env (discardLocation e)
       
     AST.ExpRecord fields ->
       any (containsField env . discardLocation . snd) fields

@@ -357,6 +357,10 @@ infer =
       Just t -> locatedFail (locatedSpan a) ("Expression has type '" <> typeName t <> "', but an 'io' action is expected")
       Nothing -> return Nothing
 
+    Norm.ExpAnnotated e t -> do
+      _ <- typeCheck (PredExact t) e
+      return (Just t)
+
     Norm.ExpRecord fields ->
       (fmap TRecord) <$> inferFields [] fields
 

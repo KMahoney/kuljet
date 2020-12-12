@@ -57,6 +57,7 @@ data Exp
   | ExpThen (Maybe Symbol) (Located Exp) (Located Exp)
   | ExpList [Located Exp]
   | ExpRecord [(Symbol, Located Exp)]
+  | ExpAnnotated (Located Exp) Type
   | ExpDot (Located Exp) (Located Symbol)
   | ExpInsert (Located Symbol) (Located Exp)
   | ExpYield (Located Exp) (Located Exp)
@@ -79,6 +80,7 @@ instance Show Exp where
       ExpThen sym (At _ a) (At _ b) -> show a ++ maybe "" ((" as " ++) . unpackSym) sym ++ " then " ++ show b
       ExpList elems -> "[" ++ intercalate "," (map show elems) ++ "]"
       ExpRecord fields -> "{" ++ intercalate "," (map (\(sym, e) -> unpackSym sym ++ " = " ++ show e) fields) ++ "}"
+      ExpAnnotated e t -> "(" ++ show e ++ " : " ++ T.unpack (typeName t) ++ ")"
       ExpDot (At _ a) (At _ b) -> show a ++ "." ++ show b
       ExpInsert (At _ sym) (At _ value) -> "(insert " <> unpackSym sym <> " " <> show value <> ")"
       ExpYield (At _ a) (At _ b) -> "(" ++ show a ++ " -> " ++ show b ++ ")"
@@ -171,6 +173,9 @@ expand =
     AST.ExpList elems ->
       ExpList (map (fmap expand) elems)
 
+    AST.ExpAnnotated e t ->
+      ExpAnnotated (fmap expand e) t
+
     AST.ExpRecord fields ->
       ExpRecord (map (\(fs, fe) -> (fs, fmap expand fe)) fields)
 
@@ -229,6 +234,9 @@ subst key value =
 
     ExpList elems ->
       ExpList (map (fmap (subst key value)) elems)
+
+    ExpAnnotated e t ->
+      ExpAnnotated (fmap (subst key value) e) t
       
     ExpRecord fields ->
       ExpRecord (map (\(fs, fe) -> (fs, fmap (subst key value) fe)) fields)
@@ -288,6 +296,9 @@ reduce =
     ExpList elems ->
       ExpList (map (fmap reduce) elems)
       
+    ExpAnnotated e t ->
+      ExpAnnotated (fmap reduce e) t
+
     ExpRecord fields ->
       ExpRecord (map (\(fs, fe) -> (fs, fmap reduce fe)) fields)
     
