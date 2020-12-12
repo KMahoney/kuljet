@@ -179,7 +179,16 @@ typeCheck p (At eSpan e) = do
           queryType <- typeCheck PredQuery queryExp
           case queryType of
             TCons "query" [TRecord fields] ->
-              tList <$> withTypeEnv (\env -> M.union env (M.fromList fields)) (typeCheck p yielder)
+              if isHtmlPred
+              then do
+                _ <- withTypeEnv (\env -> M.union env (M.fromList fields)) (typeCheck (PredExact tHtml) yielder)
+                return tHtml
+              else case p of
+                PredExact (TCons "list" [elemT]) ->
+                  tList <$> withTypeEnv (\env -> M.union env (M.fromList fields)) (typeCheck (PredExact elemT) yielder)
+
+                _ ->
+                  locatedFail eSpan ("Expression is a yield, but expected " <> predExpected)
               
             _ ->
               locatedFail (locatedSpan queryExp) "Expecting a query"
