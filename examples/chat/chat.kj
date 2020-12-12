@@ -2,9 +2,13 @@ table messages { message : text, timestamp : timestamp }
 
 serve get / =
   let template = fun content ->
-    html [ head (link { href = "/style.css", rel = "stylesheet" })
-         , body content
-         ]
+    [ docType
+    , html [ head [ link { href = "/style.css", rel = "stylesheet" }
+                  , meta { name = "viewport", content = "width=device-width, intial-scale=1" }
+                  ]
+           , body content
+           ]
+    ]
   in
   let messagesHtml =
     let query = (messages order timestamp desc limit 100) order timestamp asc in

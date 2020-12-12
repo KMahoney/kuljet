@@ -27,6 +27,7 @@ htmlTags :: [Symbol]
 htmlTags =
   map Symbol
   [ "body", "html", "head", "link", "nav"
+  , "meta"
   , "p", "div", "span", "a"
   , "strong", "em"
   , "form", "input", "textarea", "label"
