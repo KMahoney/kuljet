@@ -110,3 +110,11 @@ genUUID : io text
 Generates a unique UUID v4 string
 </section>
 
+<section>
+```
+randomBytes : int -> io text
+```
+
+Generates N random bytes, base64 encoded. This is useful for generating session keys.
+</section>
+

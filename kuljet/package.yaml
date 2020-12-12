@@ -49,3 +49,5 @@ executables:
     - time
     - uuid
     - lucid
+    - entropy
+    - base64

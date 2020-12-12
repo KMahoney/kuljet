@@ -15,6 +15,8 @@ import qualified Data.UUID as UUID
 import qualified Data.UUID.V4 as UUID
 import Control.Monad.Reader
 import qualified Web.Cookie as Cookie
+import qualified System.Entropy as Entropy
+import qualified Data.ByteString.Base64 as Base64
 
 import Kuljet.Symbol
 import Kuljet.Type
@@ -55,6 +57,7 @@ stdEnv =
       , (Symbol "docType", (return $ VHtml $ HtmlEmitStr "<!DOCTYPE html>", tHtml))
       , (Symbol "emptyHtml", (return $ VHtml $ HtmlEmitStr "", tHtml))
       , (Symbol "genUUID", (return (VAction fUUID), tIO tText))
+      , (Symbol "randomBytes", (fn1 fRandomBytes, tInt --> tIO tText))
       , (Symbol "addCookie", (fn3 fAddCookie, tResponse --> tText --> tText --> tResponse))
       , (Symbol "cookie", (fn1 fCookie, tText --> tMaybe tText))
       , (Symbol "maybe", (fn3 fMaybe, tMaybe v1 --> v0 --> (v1 --> v0) --> v0))
@@ -139,6 +142,12 @@ fNow =
 fUUID :: Interpreter Value
 fUUID =
   liftIO ((VText . UUID.toText) <$> UUID.nextRandom)
+
+
+fRandomBytes :: Value -> Interpreter Value
+fRandomBytes nValue = return $ VAction $ do
+  bytes <- liftIO $ Entropy.getEntropy $ fromInteger $ valueAsInteger nValue
+  return $ VText $ Base64.encodeBase64 bytes
 
 
 fAddCookie :: Value -> Value -> Value -> Interpreter Value
