@@ -83,3 +83,11 @@ maybe : maybe 'a -> 'b -> ('a -> 'b) -> 'b
 
 Branch on a `maybe` type.
 </section>
+
+<section>
+```
+listHead : list 'a -> maybe 'a
+```
+
+The first element of a list.
+</section>

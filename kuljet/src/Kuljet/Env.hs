@@ -3,6 +3,7 @@ module Kuljet.Env where
 import qualified System.IO.Error as IO
 import qualified Data.Map as M
 import qualified Data.List as List
+import qualified Data.Maybe as Maybe
 import qualified Network.Wai as Wai
 import qualified Network.HTTP.Types.Status as HTTP
 import qualified Network.HTTP.Types.Header as HTTP
@@ -52,6 +53,7 @@ stdEnv =
       , (Symbol "addCookie", (fn3 fAddCookie, tResponse --> tText --> tText --> tResponse))
       , (Symbol "cookie", (fn1 fCookie, tText --> tMaybe tText))
       , (Symbol "maybe", (fn3 fMaybe, tMaybe v1 --> v0 --> (v1 --> v0) --> v0))
+      , (Symbol "listHead", (fn1 fListHead, tList v0 --> tMaybe v0))
       ]
 
     infixr -->
@@ -174,3 +176,8 @@ fMaybe maybeValue defaultValue fValue =
   case valueAsMaybe maybeValue of
     Just v -> (valueAsFn fValue) v
     Nothing -> return defaultValue
+
+
+fListHead :: Value -> Interpreter Value
+fListHead listValue =
+  return $ VMaybe $ Maybe.listToMaybe $ valueAsList listValue
