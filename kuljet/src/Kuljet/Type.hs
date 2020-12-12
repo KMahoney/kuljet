@@ -36,6 +36,10 @@ tTimestamp :: Type
 tTimestamp = TCons "timestamp" []
 
 
+tPassword :: Type
+tPassword = TCons "password" []
+
+
 tHtml :: Type
 tHtml = TCons "html" []
 

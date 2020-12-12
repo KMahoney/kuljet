@@ -37,16 +37,16 @@ data InterpretedRoute
     }
 
 
-moduleInterpreter :: Env -> AST.Module -> [InterpretedRoute]
-moduleInterpreter stdEnv typecheckedModule =
-  map (interpretEndpoint stdEnv (AST.moduleTables typecheckedModule)) (AST.moduleEndpoints typecheckedModule)
+moduleInterpreter :: Env -> Int -> AST.Module -> [InterpretedRoute]
+moduleInterpreter stdEnv hashCost typecheckedModule =
+  map (interpretEndpoint stdEnv hashCost (AST.moduleTables typecheckedModule)) (AST.moduleEndpoints typecheckedModule)
 
 
-interpretEndpoint :: Env -> [AST.Table] -> AST.Endpoint -> InterpretedRoute
-interpretEndpoint stdEnv tables (AST.Serve {AST.serveMethod, AST.servePath, AST.serveExp, AST.serveType}) =
+interpretEndpoint :: Env -> Int -> [AST.Table] -> AST.Endpoint -> InterpretedRoute
+interpretEndpoint stdEnv hashCost tables (AST.Serve {AST.serveMethod, AST.servePath, AST.serveExp, AST.serveType}) =
     InterpretedRoute { routeMethod = serveMethod
                      , routePath = servePath
-                     , routeRun = interpretServeBody stdEnv serveMethod serveType tables (discardLocation serveExp)
+                     , routeRun = interpretServeBody stdEnv hashCost serveMethod serveType tables (discardLocation serveExp)
                      }
 
 
@@ -59,8 +59,8 @@ typeCheckFailure =
   error "The type checker has failed - this is a bug."
 
 
-interpretServeBody :: Env -> Method -> Type -> [AST.Table] -> AST.Exp -> DB.Database -> PathPattern.PathVars -> Wai.Application
-interpretServeBody stdEnv method bodyType tables body db pathVars request respond = do
+interpretServeBody :: Env -> Int -> Method -> Type -> [AST.Table] -> AST.Exp -> DB.Database -> PathPattern.PathVars -> Wai.Application
+interpretServeBody stdEnv hashCost method bodyType tables body db pathVars request respond = do
   state <- interpreterState
   value <- runReaderT (interpret initialEnv body) state
   if method == Method.methodPost
@@ -85,7 +85,7 @@ interpretServeBody stdEnv method bodyType tables body db pathVars request respon
   where
     interpreterState :: IO InterpreterState
     interpreterState =
-      InterpreterState db request <$> Time.getCurrentTime
+      InterpreterState hashCost db request <$> Time.getCurrentTime
 
     pathVarEnv :: Env
     pathVarEnv =

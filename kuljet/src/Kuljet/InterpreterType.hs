@@ -8,7 +8,8 @@ import qualified Database.SQLite3 as DB
 
 data InterpreterState
   = InterpreterState
-    { isDatabase :: DB.Database
+    { isHashCost :: Int
+    , isDatabase :: DB.Database
     , isRequest :: Wai.Request
     , isTimestamp :: Time.UTCTime
     }

@@ -2,6 +2,8 @@ module Kuljet.Value where
 
 import qualified Data.Map as M
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
+import qualified Data.ByteString as BS
 import qualified Network.HTTP.Types.Status as HTTP
 import qualified Network.HTTP.Types.Header as HTTP
 import qualified Data.ByteString.Lazy as LBS
@@ -39,6 +41,12 @@ data Response =
            , responseHeaders :: HTTP.ResponseHeaders
            , responseBody :: LBS.ByteString
            }
+
+
+
+valueAsBS :: Value -> BS.ByteString
+valueAsBS =
+  T.encodeUtf8 . valueAsText
 
 
 partialEq :: Value -> Value -> Bool

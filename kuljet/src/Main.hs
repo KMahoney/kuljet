@@ -29,7 +29,8 @@ import qualified Database.SQLite3 as DB
 
 
 data ServeOptions
-  = ServeOptions { serveSourcePath :: String
+  = ServeOptions { serveHashCost :: Int
+                 , serveSourcePath :: String
                  , serveReload :: Bool
                  , serveDebug :: Bool
                  , serveDbPath :: Maybe String
@@ -91,7 +92,7 @@ runInterpreter opts initialTables initialRoutes = do
           case typecheckedModule of
             Just m -> do
               let tables = Compile.moduleTables m
-              let routes = Interpret.moduleInterpreter (fmap fst Env.stdEnv) m
+              let routes = Interpret.moduleInterpreter (fmap fst Env.stdEnv) (serveHashCost opts) m
               IORef.writeIORef serveStateRef (ReloadState routes tables newModTime)
               putStrLn "Reloaded"
               app tables routes request respond
@@ -134,7 +135,7 @@ runInterpreter opts initialTables initialRoutes = do
 serve :: ServeOptions -> IO ()
 serve opts = do
   typecheckedModule <- loadFile (serveSourcePath opts) >>= maybe Exit.exitFailure return
-  runInterpreter opts (Compile.moduleTables typecheckedModule) (Interpret.moduleInterpreter (fmap fst Env.stdEnv) typecheckedModule)
+  runInterpreter opts (Compile.moduleTables typecheckedModule) (Interpret.moduleInterpreter (fmap fst Env.stdEnv) (serveHashCost opts) typecheckedModule)
 
 
 dev :: ServeOptions -> IO ()
@@ -157,15 +158,15 @@ optionParser = info (parser <**> helper) infoMod
 
     commands :: Mod CommandFields (IO ())
     commands =
-      command "dev" (info (dev <$> serveOptions) (progDesc "Alias for 'serve --debug --reload'")) <>
-      command "serve" (info (serve <$> serveOptions) (progDesc "Start server")) <>
+      command "dev" (info (dev <$> serveOptions 4) (progDesc "Alias for 'serve --debug --reload'")) <>
+      command "serve" (info (serve <$> serveOptions 30) (progDesc "Start server")) <>
       command "check" (info (check <$> filename) (progDesc "Check for errors"))
 
     filename =
       strArgument (metavar "FILENAME")
 
-    serveOptions =
-      ServeOptions <$>
+    serveOptions hashCost =
+      ServeOptions hashCost <$>
       filename <*>
       switch (long "reload") <*>
       switch (long "debug") <*>

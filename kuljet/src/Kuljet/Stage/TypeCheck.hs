@@ -118,7 +118,7 @@ lookupTable name =
 
 
 isDbType :: Type -> Bool
-isDbType t = t `elem` [tText, tInt, tTimestamp]
+isDbType t = t `elem` [tText, tInt, tTimestamp, tPassword]
 
 
 typeCheckModule :: M.Map Symbol Type -> Norm.Module -> Either Error Module

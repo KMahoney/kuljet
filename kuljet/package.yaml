@@ -51,3 +51,4 @@ executables:
     - lucid
     - entropy
     - base64
+    - cryptonite

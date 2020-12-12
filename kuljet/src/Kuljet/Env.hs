@@ -17,6 +17,7 @@ import Control.Monad.Reader
 import qualified Web.Cookie as Cookie
 import qualified System.Entropy as Entropy
 import qualified Data.ByteString.Base64 as Base64
+import qualified Crypto.KDF.BCrypt as Password
 
 import Kuljet.Symbol
 import Kuljet.Type
@@ -64,6 +65,8 @@ stdEnv =
       , (Symbol "bindMaybe", (fn2 fBindMaybe, tMaybe v0 --> (v0 --> tMaybe v1) --> tMaybe v1))
       , (Symbol "listHead", (fn1 fListHead, tList v0 --> tMaybe v0))
       , (Symbol "liftIO", (fn1 fIdentity, v0 --> tIO v0))
+      , (Symbol "hashPassword", (fn1 fHashPassword, tText --> tPassword))
+      , (Symbol "validatePassword", (fn2 fValidatePassword, tText --> tPassword --> tBool))
       ]
 
     infixr -->
@@ -206,3 +209,14 @@ fListHead listValue =
 fIdentity :: Value -> Interpreter Value
 fIdentity v =
   return v
+
+
+fHashPassword :: Value -> Interpreter Value
+fHashPassword passValue = do
+  cost <- asks isHashCost
+  (VText . T.decodeUtf8) <$> liftIO (Password.hashPassword cost (valueAsBS passValue))
+
+
+fValidatePassword :: Value -> Value -> Interpreter Value
+fValidatePassword passValue hashValue =
+  return $ VBool $ Password.validatePassword (valueAsBS passValue) (valueAsBS hashValue)

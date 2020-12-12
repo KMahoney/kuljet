@@ -22,6 +22,16 @@ type ColumnTypes = [(T.Text, T.Text)]
 type Diff = (ColumnTypes, ColumnTypes)
 
 
+sqlType :: Type -> T.Text
+sqlType =
+  \case
+    TCons "text" [] -> "text"
+    TCons "password" [] -> "text"
+    TCons "int" [] -> "int"
+    TCons "timestamp" [] -> "timestamp"
+    _ -> error "Invalid field type"
+
+
 createTable :: DB.Database -> TypeCheck.Table -> IO ()
 createTable db table =
   DB.exec db createTableSql
@@ -37,13 +47,6 @@ createTable db table =
     createFieldSql (name, t) =
       symbolName name <> " " <> sqlType t
 
-    sqlType :: Type -> T.Text
-    sqlType =
-      \case
-        TCons "text" [] -> "text"
-        TCons "int" [] -> "int"
-        TCons "timestamp" [] -> "timestamp"
-        _ -> error "Invalid field type"
     
 
 diffTables :: DB.Database -> [TypeCheck.Table] -> IO [(T.Text, Diff)]
@@ -69,14 +72,6 @@ diffTables db tables =
         DB.Done ->
           return (reverse accum)
       
-    sqlType :: Type -> T.Text
-    sqlType =
-      \case
-        TCons "text" [] -> "text"
-        TCons "int" [] -> "int"
-        TCons "timestamp" [] -> "timestamp"
-        _ -> error "Invalid field type"
-
 
 createDatabase :: String -> [TypeCheck.Table] -> IO ()
 createDatabase filename tables = do

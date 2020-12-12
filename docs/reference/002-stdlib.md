@@ -118,3 +118,20 @@ randomBytes : int -> io text
 Generates N random bytes, base64 encoded. This is useful for generating session keys.
 </section>
 
+### Passwords
+
+<section>
+```
+hashPassword : text -> password
+```
+
+Hashes a password.
+</section>
+
+<section>
+```
+validatePassword : text -> password -> bool
+```
+
+Check a password against a password hash
+</section>
