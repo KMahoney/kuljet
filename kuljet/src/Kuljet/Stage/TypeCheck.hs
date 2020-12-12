@@ -72,7 +72,6 @@ data TypePred
   = PredPostResponse
   | PredResponse
   | PredExact Type
-  | PredFn Type TypePred
   | PredQuery
   | PredOrd
   | PredProject
@@ -191,10 +190,6 @@ typeCheck p (At eSpan e) = do
               retT' <- introduce (Norm.discardAnnotation sym) argT (typeCheck (PredExact retT) body)
               return (tFn argT retT')
 
-            PredFn argT retPred -> do
-              retT <- introduce (Norm.discardAnnotation sym) argT (typeCheck retPred body)
-              return (tFn argT retT)
-
             PredPostResponse ->
               case sym of
                 Norm.Annotated argName (Just argT) -> do
@@ -284,14 +279,12 @@ typeCheck p (At eSpan e) = do
         PredOrd -> t `elem` [tInt, tText, tTimestamp, tBool]
         PredProject -> isProject t
         PredCompare -> t `elem` [tInt, tText, tTimestamp, tBool] -- TODO records, lists
-        _ -> False
         
     predExpected =
       case p of
         PredPostResponse -> "html or POST function"
         PredResponse -> "response"
         PredExact t -> typeName t
-        PredFn _ _ -> "a function"
         PredQuery -> "a query"
         PredOrd -> "an orderable value"
         PredCompare -> "a comparable value"
