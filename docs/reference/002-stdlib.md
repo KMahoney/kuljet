@@ -13,6 +13,14 @@ The following are HTML functions of type `htmlTag`:
 
 <section>
 ```
+now : timestamp
+```
+
+The time the current request was made.
+</section>
+
+<section>
+```
 redirect : text -> response
 ```
 
@@ -93,15 +101,6 @@ liftIO : 'a -> io 'a
 
 Lift a pure expression into `io`.
 </section>
-
-<section>
-```
-getTimestamp : io timestamp
-```
-
-An IO action to retrieve the current time.
-</section>
-
 
 <section>
 ```

@@ -11,7 +11,6 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
-import qualified Data.Time.Clock as Time
 import qualified Data.UUID as UUID
 import qualified Data.UUID.V4 as UUID
 import Control.Monad.Reader
@@ -37,21 +36,25 @@ htmlTags =
   ]
 
 
-stdEnv :: M.Map Symbol (Value, Type)
+type EnvValue =
+  Reader InterpreterState Value
+
+
+stdEnv :: M.Map Symbol (EnvValue, Type)
 stdEnv =
   M.fromList (tagEnvList ++ stdEnvList)
 
   where
     tagEnvList =
-      map (\tag -> (tag, (VHtml (HtmlEmitTag (symbolName tag)), tHtmlTag))) htmlTags
+      map (\tag -> (tag, (return $ VHtml $ HtmlEmitTag $ symbolName tag, tHtmlTag))) htmlTags
 
     stdEnvList =
       [ (Symbol "redirect", (fn1 fRedirect, tText --> tResponse))
       , (Symbol "file", (fn2 fFile, tText --> tText --> tResponse))
-      , (Symbol "getTimestamp", (VAction fNow, tIO tTimestamp))
-      , (Symbol "docType", (VHtml (HtmlEmitStr "<!DOCTYPE html>"), tHtml))
-      , (Symbol "emptyHtml", (VHtml (HtmlEmitStr ""), tHtml))
-      , (Symbol "genUUID", (VAction fUUID, tIO tText))
+      , (Symbol "now", (fNow, tTimestamp))
+      , (Symbol "docType", (return $ VHtml $ HtmlEmitStr "<!DOCTYPE html>", tHtml))
+      , (Symbol "emptyHtml", (return $ VHtml $ HtmlEmitStr "", tHtml))
+      , (Symbol "genUUID", (return (VAction fUUID), tIO tText))
       , (Symbol "addCookie", (fn3 fAddCookie, tResponse --> tText --> tText --> tResponse))
       , (Symbol "cookie", (fn1 fCookie, tText --> tMaybe tText))
       , (Symbol "maybe", (fn3 fMaybe, tMaybe v1 --> v0 --> (v1 --> v0) --> v0))
@@ -66,17 +69,14 @@ stdEnv =
     v0 = TVar 0
     v1 = TVar 1
 
+    fn1 :: (Value -> Interpreter Value) -> EnvValue
+    fn1 = return . VFn
 
-fn1 :: (Value -> Interpreter Value) -> Value
-fn1 = VFn
+    fn2 :: (Value -> Value -> Interpreter Value) -> EnvValue
+    fn2 f = return $ VFn (\arg1 -> return (VFn (\arg2 -> f arg1 arg2)))
 
-
-fn2 :: (Value -> Value -> Interpreter Value) -> Value
-fn2 f = VFn (\arg1 -> return (VFn (\arg2 -> f arg1 arg2)))
-
-
-fn3 :: (Value -> Value -> Value -> Interpreter Value) -> Value
-fn3 f = VFn (\arg1 -> return (VFn (\arg2 -> return (VFn (\arg3 -> f arg1 arg2 arg3)))))
+    fn3 :: (Value -> Value -> Value -> Interpreter Value) -> EnvValue
+    fn3 f = return $ VFn (\arg1 -> return (VFn (\arg2 -> return (VFn (\arg3 -> f arg1 arg2 arg3)))))
 
 
 fRedirect :: Value -> Interpreter Value
@@ -131,9 +131,9 @@ fFile contentTypeValue filenameValue =
         }
 
 
-fNow :: Interpreter Value
+fNow :: EnvValue
 fNow =
-  liftIO (VTimestamp <$> Time.getCurrentTime)
+  VTimestamp <$> asks isTimestamp
 
 
 fUUID :: Interpreter Value

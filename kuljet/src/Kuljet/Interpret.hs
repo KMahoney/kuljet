@@ -5,6 +5,7 @@ import qualified Data.Text as T
 import qualified Data.Maybe as Maybe
 import qualified Data.Text.Encoding as T
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.Time.Clock as Time
 import qualified Network.Wai as Wai
 import qualified Network.Wai.Parse as Wai
 import qualified Network.HTTP.Types.Status as HTTP
@@ -12,6 +13,7 @@ import qualified Network.HTTP.Types.Method as Method
 import Network.HTTP.Types.Method (Method)
 import RangedParsec (Located(..))
 import Control.Monad.Reader
+import Data.Functor.Identity (runIdentity)
 
 import qualified Database.SQLite3 as DB
 
@@ -49,7 +51,7 @@ interpretEndpoint stdEnv tables (AST.Serve {AST.serveMethod, AST.servePath, AST.
 
 
 type Env
-  = M.Map Symbol Value
+  = M.Map Symbol (Reader InterpreterState Value)
 
 
 typeCheckFailure :: a
@@ -59,7 +61,8 @@ typeCheckFailure =
 
 interpretServeBody :: Env -> Method -> Type -> [AST.Table] -> AST.Exp -> DB.Database -> PathPattern.PathVars -> Wai.Application
 interpretServeBody stdEnv method bodyType tables body db pathVars request respond = do
-  value <- runReaderT (interpret initialEnv body) interpreterState
+  state <- interpreterState
+  value <- runReaderT (interpret initialEnv body) state
   if method == Method.methodPost
     then do
       case bodyType of
@@ -67,7 +70,7 @@ interpretServeBody stdEnv method bodyType tables body db pathVars request respon
           (params, _) <- Wai.parseRequestBody Wai.lbsBackEnd request
           case paramsToRecord fields params of
             Right r -> do
-              value' <- runReaderT (valueAsFn value r) interpreterState
+              value' <- runReaderT (valueAsFn value r) state
               sendResponse (valueToResponse value')
   
             Left err ->
@@ -80,14 +83,17 @@ interpretServeBody stdEnv method bodyType tables body db pathVars request respon
       sendResponse (valueToResponse value)
 
   where
+    interpreterState :: IO InterpreterState
     interpreterState =
-      InterpreterState db request
+      InterpreterState db request <$> Time.getCurrentTime
 
+    pathVarEnv :: Env
     pathVarEnv =
-      M.map VText pathVars
+      M.map (return . VText) pathVars
 
+    tableEnv :: Env
     tableEnv =
-      M.fromList (map (\table -> (AST.tableName table, VQuery (tableQuery table))) tables)
+      M.fromList (map (\table -> (AST.tableName table, return $ VQuery $ tableQuery table)) tables)
 
     tableQuery table =
       Query.queryTable
@@ -174,7 +180,7 @@ interpret env =
 
     AST.ExpVar (At _ var) ->
       case M.lookup var env of
-        Just value -> return value
+        Just value -> mapReaderT (return . runIdentity) value
         Nothing -> error ("Type check error - missing '" <> T.unpack (symbolName var) <> "'")
 
     AST.ExpApp (At _ fExp) (At _ argExp) -> do
@@ -204,12 +210,12 @@ interpret env =
           typeCheckFailure
 
     AST.ExpAbs (AST.Annotated { AST.discardAnnotation = argName }) (At _ bodyExp) ->
-      return $ VFn (\value -> interpret (M.insert argName value env) bodyExp)
+      return $ VFn (\value -> interpret (M.insert argName (return value) env) bodyExp)
 
     AST.ExpThen sym (At _ ioExp) (At _ bodyExp) -> do
       ioValue <- interpret env ioExp
       value <- valueAsAction ioValue
-      interpret (maybe env (\s -> M.insert s value env) sym) bodyExp
+      interpret (maybe env (\s -> M.insert s (return value) env) sym) bodyExp
 
     AST.ExpList exps ->
       VList <$> mapM (interpret env . discardLocation) exps
@@ -255,7 +261,7 @@ interpret env =
       where
         rowToEnv :: [(T.Text, DB.SQLData)] -> Env
         rowToEnv =
-          M.fromList . map (\(name, value) -> (Symbol name, dbValue value))
+          M.fromList . map (\(name, value) -> (Symbol name, return $ dbValue value))
 
         -- FIXME: decode based on expected type
         dbValue :: DB.SQLData -> Value
