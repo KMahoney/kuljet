@@ -96,6 +96,7 @@ data Exp
   | ExpAnnotated (Located Exp) Type
   | ExpDot (Located Exp) (Located Symbol)
   | ExpInsert (Located Symbol) (Located Exp)
+  | ExpDelete (Located Symbol) (Located Exp)
   | ExpYield (Located Exp) (Located Exp)
   | ExpQLimit (Located Exp) (Located Exp)
   | ExpQOrder (Located Exp) (Located Exp) QOrder
@@ -349,7 +350,7 @@ fields = do
 simpleExpression :: Parsec Exp
 simpleExpression =
   expecting "expression" $
-  parens <|> fn <|> ifExp <|> array <|> record <|> insert <|> int <|> var <|> str
+  parens <|> fn <|> ifExp <|> array <|> record <|> insert <|> delete <|> int <|> var <|> str
   
   where
     parens = ExpParens <$> (lParen *> expression <* rParen)
@@ -360,6 +361,7 @@ simpleExpression =
     var = ExpVar <$> parseLocated symbol
     record = ExpRecord <$> (lCurly *> field `sepBy` comma <* rCurly)
     insert = ExpInsert <$> (kwInsert *> parseLocated symbol) <*> parseLocated simpleExpression
+    delete = ExpDelete <$> (kwDelete *> parseLocated symbol) <*> (kwWhere *> parseLocated infixExpressions)
 
     ifExp = ExpIf <$> (kwIf *> parseLocated expression)
                   <*> (kwThen *> parseLocated expression)
@@ -458,7 +460,7 @@ rBracket = lexeme (char ']')
 
 
 kwServe, kwGet, kwPost, kwFun, kwLet, kwIn, kwTable :: Parsec ()
-kwInsert, kwThen, kwAs, kwLimit, kwOrder, kwAsc, kwDesc :: Parsec ()
+kwInsert, kwDelete, kwThen, kwAs, kwLimit, kwOrder, kwAsc, kwDesc :: Parsec ()
 kwSelect, kwWhere, kwNatJoin, kwAnd, kwOr, kwIf, kwElse :: Parsec ()
 
 kwServe = keyword "serve"
@@ -469,6 +471,7 @@ kwLet = keyword "let"
 kwIn = keyword "in"
 kwTable = keyword "table"
 kwInsert = keyword "insert"
+kwDelete = keyword "delete"
 kwThen = keyword "then"
 kwAs = keyword "as"
 kwLimit = keyword "limit"

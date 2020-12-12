@@ -420,6 +420,14 @@ infer =
       Nothing ->
         locatedFail tableSpan "Unknown table"
 
+    Norm.ExpDelete (At tableSpan tableName) whereExp ->
+      lookupTable tableName >>= \case
+      Just (Table { tableFields }) -> do
+        _ <- withTypeEnv (\env -> M.union env (M.fromList tableFields)) (typeCheck (PredExact tBool) whereExp)
+        return (Just (tIO tUnit))
+      Nothing ->
+        locatedFail tableSpan "Unknown table"
+
     Norm.ExpQLimit queryExp limitExp -> do
       queryType <- typeCheck PredQuery queryExp
       _ <- typeCheck (PredExact tInt) limitExp

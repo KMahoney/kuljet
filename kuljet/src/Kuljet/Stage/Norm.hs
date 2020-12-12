@@ -60,6 +60,7 @@ data Exp
   | ExpAnnotated (Located Exp) Type
   | ExpDot (Located Exp) (Located Symbol)
   | ExpInsert (Located Symbol) (Located Exp)
+  | ExpDelete (Located Symbol) (Located Exp)
   | ExpYield (Located Exp) (Located Exp)
   | ExpQLimit (Located Exp) (Located Exp)
   | ExpQOrder (Located Exp) (Located Exp) AST.QOrder
@@ -83,6 +84,7 @@ instance Show Exp where
       ExpAnnotated e t -> "(" ++ show e ++ " : " ++ T.unpack (typeName t) ++ ")"
       ExpDot (At _ a) (At _ b) -> show a ++ "." ++ show b
       ExpInsert (At _ sym) (At _ value) -> "(insert " <> unpackSym sym <> " " <> show value <> ")"
+      ExpDelete (At _ sym) (At _ value) -> "(delete " <> unpackSym sym <> " where " <> show value <> ")"
       ExpYield (At _ a) (At _ b) -> "(" ++ show a ++ " -> " ++ show b ++ ")"
       ExpQLimit (At _ a) (At _ b) -> "(" ++ show a ++ " limit " ++ show b ++ ")"
       ExpQOrder (At _ a) (At _ b) ord -> "(" ++ show a ++ " order " ++ show b ++ " " ++ showOrd ord ++ ")"
@@ -188,6 +190,9 @@ expand =
     AST.ExpInsert sym value ->
       ExpInsert sym (fmap expand value)
 
+    AST.ExpDelete sym value ->
+      ExpDelete sym (fmap expand value)
+
     AST.ExpYield a b ->
       ExpYield (fmap expand a) (fmap expand b)
 
@@ -246,6 +251,9 @@ subst key value =
 
     ExpInsert sym a ->
       ExpInsert sym (fmap (subst key value) a)
+
+    ExpDelete sym a ->
+      ExpDelete sym (fmap (subst key value) a)
 
     ExpYield a b ->
       ExpYield (fmap (subst key value) a) (fmap (subst key value) b)
@@ -307,6 +315,9 @@ reduce =
 
     ExpInsert sym a ->
       ExpInsert sym (fmap reduce a)
+
+    ExpDelete sym a ->
+      ExpDelete sym (fmap reduce a)
 
     ExpYield a b ->
       ExpYield (fmap reduce a) (fmap reduce b)

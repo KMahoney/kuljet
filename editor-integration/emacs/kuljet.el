@@ -1,13 +1,13 @@
 (require 'flycheck)
 
 (defconst kuljet--keywords
-  '("serve" "get" "post" "let" "in" "fun" "table" "insert"
+  '("serve" "get" "post" "let" "in" "fun" "table" "insert" "delete"
     "then" "as" "limit" "order" "asc" "desc" "select" "where"
     "natJoin" "and" "or" "if" "else"))
 
 (defconst kuljet--font-lock
   `((,(concat "\\_<" (regexp-opt kuljet--keywords) "\\_>") . font-lock-keyword-face)
-    (,(concat "\\(let\\|table\\|insert\\|as\\)\\s-+\\(" lisp-mode-symbol-regexp "\\)") . ((2 font-lock-variable-name-face)))
+    (,(concat "\\(let\\|table\\|insert\\|delete\\|as\\)\\s-+\\(" lisp-mode-symbol-regexp "\\)") . ((2 font-lock-variable-name-face)))
     ))
 
 ;;;###autoload

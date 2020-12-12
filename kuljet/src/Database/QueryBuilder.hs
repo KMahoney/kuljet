@@ -5,6 +5,7 @@ module Database.QueryBuilder
   , Settings(..)
   , Order(..)
   , buildSqLite
+  , buildSqLiteExpression
   , queryTable
   , collectPlaceholders
   , columnNames
@@ -70,13 +71,27 @@ data Settings
 type Build a = Reader Settings a
 
 
+sqLitePlaceholder :: Integer -> Sql
+sqLitePlaceholder =
+  (\i -> Sql ("?" <> T.pack (show i)))
+
+
 buildSqLite :: Query -> Sql
 buildSqLite =
-  buildSqlWithPlaceholder (\i -> Sql ("?" <> T.pack (show i)))
+  buildSqlWithPlaceholder sqLitePlaceholder
+
+
+buildSqLiteExpression :: Expression -> Sql
+buildSqLiteExpression =
+  buildSqlExpressionWithPlaceholder sqLitePlaceholder
 
 
 buildSqlWithPlaceholder :: (Integer -> Sql) -> Query -> Sql
 buildSqlWithPlaceholder f query = runReader (toSql query) (Settings f)
+
+
+buildSqlExpressionWithPlaceholder :: (Integer -> Sql) -> Expression -> Sql
+buildSqlExpressionWithPlaceholder f e = runReader (expressionToSql e) (Settings f)
 
 
 queryTable :: Text -> [Text] -> Query

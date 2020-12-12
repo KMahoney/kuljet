@@ -63,6 +63,7 @@ data Exp
   | ExpRecord [(Symbol, Located Exp)]
   | ExpDot (Located Exp) (Located Symbol)
   | ExpInsert (Located Symbol) (Located Exp)
+  | ExpDelete (Located Symbol) (QB.Expression, QueryArgs)
   | ExpYield (QB.Query, QueryArgs) (Located Exp)
   | ExpBinOp AST.BinOp (Located Exp) (Located Exp)
   | ExpIf (Located Exp) (Located Exp) (Located Exp)
@@ -143,6 +144,11 @@ compileExp (At eSpan e) =
 
     AST.ExpInsert sym value ->
       At eSpan <$> (ExpInsert sym <$> compileExp value)
+
+    AST.ExpDelete sym value -> do
+      env <- asks tableEnv
+      let fields = S.fromList $ map fst $ AST.tableFields $ env M.! discardLocation sym
+      At eSpan <$> (ExpDelete sym <$> runStateT (compileQueryExp fields value) M.empty)
 
     AST.ExpYield a b ->
       At eSpan <$> (ExpYield <$> runStateT (compileQuery a) M.empty <*> compileExp b)
@@ -302,6 +308,9 @@ containsField env =
     AST.ExpInsert _ (At _ a) ->
       containsField env a
       
+    AST.ExpDelete _ (At _ a) ->
+      containsField env a
+
     AST.ExpYield (At _ a) (At _ b) ->
       containsField env a || containsField env b
       

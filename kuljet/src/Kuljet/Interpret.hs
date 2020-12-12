@@ -18,6 +18,7 @@ import qualified Database.SQLite3 as DB
 import qualified Kuljet.Stage.CompileSql as AST
 import qualified Kuljet.Query as Query
 import qualified Database.QueryBuilder as Query
+import qualified Database.Sql as Query
 
 import Kuljet.Symbol
 import qualified Kuljet.PathPattern as PathPattern
@@ -290,3 +291,25 @@ interpret env =
 
             fieldValues =
               map (\(key, fieldValue) -> (":" <> symbolName key, Query.valueToSql fieldValue)) fields
+
+    AST.ExpDelete (At _ tableName) (queryExp, queryArgs) -> do
+      queryArgs' <- mapM (interpret env) queryArgs
+      return $ VAction $ delete tableName queryArgs'
+
+      where
+        delete :: Symbol -> M.Map Integer Value -> Interpreter Value
+        delete (Symbol name) args = do
+          db <- asks isDatabase
+          liftIO $ do
+            stmt <- DB.prepare db (Query.toText sql)
+            DB.bindNamed stmt sqlArgs
+            _ <- DB.step stmt
+            return VUnit
+
+          where
+            sql :: Query.Sql
+            sql =
+              "DELETE FROM " <> Query.quoteName name <> " WHERE " <> Query.buildSqLiteExpression queryExp
+
+            sqlArgs =
+              map (\(k, v) -> ("?" <> T.pack (show k), Query.valueToSql v)) (M.toList args)
