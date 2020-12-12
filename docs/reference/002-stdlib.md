@@ -70,6 +70,14 @@ Branch on a `maybe` type.
 
 <section>
 ```
+bindMaybe : maybe 'a -> ('a -> maybe 'b) -> maybe 'b
+```
+
+Chain `maybe` values.
+</section>
+
+<section>
+```
 listHead : list 'a -> maybe 'a
 ```
 

@@ -53,6 +53,7 @@ stdEnv =
       , (Symbol "addCookie", (fn3 fAddCookie, tResponse --> tText --> tText --> tResponse))
       , (Symbol "cookie", (fn1 fCookie, tText --> tMaybe tText))
       , (Symbol "maybe", (fn3 fMaybe, tMaybe v1 --> v0 --> (v1 --> v0) --> v0))
+      , (Symbol "bindMaybe", (fn2 fBindMaybe, tMaybe v0 --> (v0 --> tMaybe v1) --> tMaybe v1))
       , (Symbol "listHead", (fn1 fListHead, tList v0 --> tMaybe v0))
       , (Symbol "liftIO", (fn1 fIdentity, v0 --> tIO v0))
       ]
@@ -177,6 +178,13 @@ fMaybe maybeValue defaultValue fValue =
   case valueAsMaybe maybeValue of
     Just v -> (valueAsFn fValue) v
     Nothing -> return defaultValue
+
+
+fBindMaybe :: Value -> Value -> Interpreter Value
+fBindMaybe maybeValue fValue =
+  case valueAsMaybe maybeValue of
+    Just v -> (valueAsFn fValue) v
+    Nothing -> return (VMaybe Nothing)
 
 
 fListHead :: Value -> Interpreter Value
