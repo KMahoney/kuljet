@@ -62,9 +62,9 @@ loadFile filename = do
 
 data ReloadState =
   ReloadState { reloadRoutes :: [Interpret.InterpretedRoute]
-             , reloadTables :: [TypeCheck.Table]
-             , reloadModTime :: Posix.EpochTime
-             }
+              , reloadTables :: [TypeCheck.Table]
+              , reloadModTime :: Posix.EpochTime
+              }
 
 
 runInterpreter :: ServeOptions -> [TypeCheck.Table] -> [Interpret.InterpretedRoute] -> IO ()
