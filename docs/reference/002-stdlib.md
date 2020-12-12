@@ -30,14 +30,6 @@ constructs a response that serves `<path>` with the given `<contentType>`.
 
 <section>
 ```
-getTimestamp : io timestamp
-```
-
-An IO action to retrieve the current time.
-</section>
-
-<section>
-```
 emptyHtml : html
 ```
 
@@ -50,14 +42,6 @@ docType : html
 ```
 
 The HTML `<!DOCTYPE html>` declaration
-</section>
-
-<section>
-```
-genUUID : io text
-```
-
-Generates a unique UUID v4 string
 </section>
 
 <section>
@@ -91,3 +75,31 @@ listHead : list 'a -> maybe 'a
 
 The first element of a list.
 </section>
+
+### IO Actions
+
+<section>
+```
+liftIO : 'a -> io 'a
+```
+
+Lift a pure expression into `io`.
+</section>
+
+<section>
+```
+getTimestamp : io timestamp
+```
+
+An IO action to retrieve the current time.
+</section>
+
+
+<section>
+```
+genUUID : io text
+```
+
+Generates a unique UUID v4 string
+</section>
+

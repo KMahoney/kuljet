@@ -54,6 +54,7 @@ stdEnv =
       , (Symbol "cookie", (fn1 fCookie, tText --> tMaybe tText))
       , (Symbol "maybe", (fn3 fMaybe, tMaybe v1 --> v0 --> (v1 --> v0) --> v0))
       , (Symbol "listHead", (fn1 fListHead, tList v0 --> tMaybe v0))
+      , (Symbol "liftIO", (fn1 fIdentity, v0 --> tIO v0))
       ]
 
     infixr -->
@@ -181,3 +182,8 @@ fMaybe maybeValue defaultValue fValue =
 fListHead :: Value -> Interpreter Value
 fListHead listValue =
   return $ VMaybe $ Maybe.listToMaybe $ valueAsList listValue
+
+
+fIdentity :: Value -> Interpreter Value
+fIdentity v =
+  return v
