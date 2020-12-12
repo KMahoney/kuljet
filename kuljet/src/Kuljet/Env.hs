@@ -47,6 +47,7 @@ stdEnv =
       , (Symbol "file", (fn2 fFile, tText --> tText --> tResponse))
       , (Symbol "getTimestamp", (VAction fNow, tIO tTimestamp))
       , (Symbol "docType", (VHtml (HtmlEmitStr "<!DOCTYPE html>"), tHtml))
+      , (Symbol "emptyHtml", (VHtml (HtmlEmitStr ""), tHtml))
       , (Symbol "genUUID", (VAction fUUID, tIO tText))
       , (Symbol "addCookie", (fn3 fAddCookie, tResponse --> tText --> tText --> tResponse))
       , (Symbol "cookie", (fn1 fCookie, tText --> tMaybe tText))

@@ -38,6 +38,14 @@ An IO action to retrieve the current time.
 
 <section>
 ```
+emptyHtml : html
+```
+
+Blank HTML.
+</section>
+
+<section>
+```
 docType : html
 ```
 
