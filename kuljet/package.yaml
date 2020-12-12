@@ -48,3 +48,4 @@ executables:
     - unix
     - time
     - uuid
+    - lucid

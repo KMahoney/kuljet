@@ -1,8 +1,6 @@
 module Main where
 
-import qualified Data.Set as S
 import qualified Data.Maybe as Maybe
-import Control.Monad (join)
 import Options.Applicative
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -12,6 +10,9 @@ import qualified Network.Wai as Wai
 import qualified Network.HTTP.Types.Status as Status
 import qualified System.Exit as Exit
 import qualified System.Posix.Files as Files
+import qualified System.Posix.Types as Posix
+import Control.Monad.State
+import qualified Data.IORef as IORef
 
 import qualified RangedParsec as Parsec
 import qualified Kuljet.Stage.AST as AST
@@ -22,118 +23,101 @@ import qualified Kuljet.Interpret as Interpret
 import qualified Kuljet.SourceError as SourceError
 import qualified Kuljet.PathPattern as PathPattern
 import qualified Kuljet.Env as Env
+import qualified Kuljet.AutoDb as AutoDb
 
 import qualified Database.SQLite3 as DB
 
-import Kuljet.Symbol
-import Kuljet.Type
+
+data ServeOptions
+  = ServeOptions { serveSourcePath :: String
+                 , serveReload :: Bool
+                 , serveDebug :: Bool
+                 , serveDbPath :: Maybe String
+                 }
 
 
-createDatabase :: String -> [TypeCheck.Table] -> IO DB.Database
-createDatabase filename tables = do
-  dbExists <- Files.fileExist filename
-  db <- DB.open (T.pack filename)
-  if dbExists then checkTables db else createTables db
-  return db
-
-  where
-    checkTables db = do
-      checks <- mapM (checkTable db) tables
-      if and checks
-        then
-        putStrLn ("Using database: " ++ filename)
-        else do
-        putStrLn $ "\nDelete '" ++ filename ++ "' to recreate the database, or migrate the database schema.\n"
-        Exit.exitFailure
-
-    checkTable db table = do
-      dbColumns <- DB.prepare db ("PRAGMA table_info(" <> symbolName (TypeCheck.tableName table) <> ")") >>= collectColumns []
-      let tableColumns = (map (\(fieldName, fieldType) -> (symbolName fieldName, sqlType fieldType)) (TypeCheck.tableFields table))
-      if S.fromList dbColumns == S.fromList tableColumns
-        then
-        return True
-        else do
-        putStrLn $ "Table '" ++ T.unpack (symbolName (TypeCheck.tableName table)) ++ "' does not match the declared type:"
-        putStrLn $ "  Database: { " ++ showColumns dbColumns ++ " }"
-        putStrLn $ "  Declared: { " ++ showColumns tableColumns ++ " }"
-        return False
-
-    showColumns :: [(T.Text, T.Text)] -> String
-    showColumns = T.unpack . T.intercalate ", " . map (\(col, t) -> col <> " : " <> t)
-
-    collectColumns accum stmt = do
-      nextRow <- DB.step stmt
-      case nextRow of
-        DB.Row -> do
-          columnName <- DB.columnText stmt 1
-          columnType <- DB.columnText stmt 2
-          collectColumns ((columnName, columnType) : accum) stmt
-        DB.Done ->
-          return (reverse accum)
-      
-    createTables db = do
-      mapM_ (createTable db) tables
-      putStrLn ("Created database: " ++ filename)
-      
-    createTable db table = do
-      DB.exec db (dropTableSql table)
-      DB.exec db (createTableSql table)
-
-    dropTableSql :: TypeCheck.Table -> T.Text
-    dropTableSql table =
-      "DROP TABLE IF EXISTS " <> symbolName (TypeCheck.tableName table) <> ";"
-
-    createTableSql :: TypeCheck.Table -> T.Text
-    createTableSql table =
-      "CREATE TABLE " <> symbolName (TypeCheck.tableName table) <> "(" <>
-      T.intercalate "," (map createFieldSql (TypeCheck.tableFields table)) <>
-      ");"
-
-    createFieldSql :: (Symbol, Type) -> T.Text
-    createFieldSql (name, t) =
-      symbolName name <> " " <> sqlType t
-
-    sqlType :: Type -> T.Text
-    sqlType =
-      \case
-        TCons "text" [] -> "text"
-        TCons "int" [] -> "int"
-        TCons "timestamp" [] -> "timestamp"
-        _ -> error "Invalid field type"
+dbPath :: ServeOptions -> String
+dbPath opts =
+  Maybe.fromMaybe (serveSourcePath opts <> ".db") (serveDbPath opts)
 
 
-loadFile :: String -> IO Compile.Module
+loadFile :: String -> IO (Maybe Compile.Module)
 loadFile filename = do
   source <- T.readFile filename -- FIXME: Utf8
   case AST.parseModule (T.pack filename) source of
     Left err -> do
       T.putStrLn (Parsec.errMessage err)
       putDoc (Parsec.prettyPos (Parsec.errSourcePos err))
-      Exit.exitFailure
+      return Nothing
       
     Right parsedMod ->
       case TypeCheck.typeCheckModule (fmap snd Env.stdEnv) (Norm.normalise parsedMod) >>= Compile.compileModule of
         Left err -> do
           SourceError.putError err
-          Exit.exitFailure
+          return Nothing
           
         Right ast ->
-          return ast
+          return (Just ast)
 
 
-runInterpreter :: DB.Database -> [Interpret.InterpretedRoute] -> IO ()
-runInterpreter db routes = do
+data ReloadState =
+  ReloadState { reloadRoutes :: [Interpret.InterpretedRoute]
+             , reloadTables :: [TypeCheck.Table]
+             , reloadModTime :: Posix.EpochTime
+             }
+
+
+runInterpreter :: ServeOptions -> [TypeCheck.Table] -> [Interpret.InterpretedRoute] -> IO ()
+runInterpreter opts initialTables initialRoutes = do
   putStrLn "Running server on localhost:4000"
-  Warp.run 4000 app
+  if serveReload opts
+    then do
+      reloadStateRef <- (ReloadState initialRoutes initialTables <$> queryModTime) >>= IORef.newIORef
+      Warp.run 4000 (reloadApp reloadStateRef)
+    else
+      Warp.run 4000 (app initialTables initialRoutes)
 
   where
-    app request respond =
-      route routes request respond
+    filename =
+      serveSourcePath opts
+
+    reloadApp :: IORef.IORef ReloadState -> Wai.Application
+    reloadApp serveStateRef request respond = do
+      serveState <- IORef.readIORef serveStateRef
+      newModTime <- queryModTime
+      if newModTime > reloadModTime serveState
+        then do
+          typecheckedModule <- loadFile filename
+          case typecheckedModule of
+            Just m -> do
+              let tables = Compile.moduleTables m
+              let routes = Interpret.moduleInterpreter (fmap fst Env.stdEnv) m
+              IORef.writeIORef serveStateRef (ReloadState routes tables newModTime)
+              putStrLn "Reloaded"
+              app tables routes request respond
+            Nothing ->
+              app (reloadTables serveState) (reloadRoutes serveState) request respond
+        else
+          app (reloadTables serveState) (reloadRoutes serveState) request respond
+
+    queryModTime =
+      Files.modificationTime <$> Files.getFileStatus filename
+
+    app :: [TypeCheck.Table] -> [Interpret.InterpretedRoute] -> Wai.Application
+    app tables routes =
+      if serveDebug opts
+      then AutoDb.middleware (dbPath opts) tables (withConnection (route routes))
+      else (withConnection (route routes))
+
+    withConnection :: (DB.Database -> Wai.Application) -> Wai.Application
+    withConnection innerApp request respond = do
+      db <- DB.open (T.pack (dbPath opts))
+      innerApp db request respond
       
-    route [] _ respond =
+    route :: [Interpret.InterpretedRoute] -> DB.Database -> Wai.Application
+    route [] _ _ respond =
       respond $ Wai.responseLBS Status.notFound404 [] "Not Found"
-      
-    route (r:rs) request respond =
+    route (r:rs) db request respond =
       if Interpret.routeMethod r == Wai.requestMethod request
       then
         case PathPattern.matchPath (Interpret.routePath r) (Wai.pathInfo request) of
@@ -141,16 +125,21 @@ runInterpreter db routes = do
             Interpret.routeRun r db pathValues request respond
           
           Nothing ->
-            route rs request respond
+            route rs db request respond
+
       else
-        route rs request respond
+        route rs db request respond
 
 
-serve :: String -> Maybe String -> IO ()
-serve filename dbPath = do
-  typecheckedModule <- loadFile filename
-  db <- createDatabase (Maybe.fromMaybe (filename <> ".db") dbPath) (Compile.moduleTables typecheckedModule)
-  runInterpreter db (Interpret.moduleInterpreter (fmap fst Env.stdEnv) typecheckedModule)
+serve :: ServeOptions -> IO ()
+serve opts = do
+  typecheckedModule <- loadFile (serveSourcePath opts) >>= maybe Exit.exitFailure return
+  runInterpreter opts (Compile.moduleTables typecheckedModule) (Interpret.moduleInterpreter (fmap fst Env.stdEnv) typecheckedModule)
+
+
+dev :: ServeOptions -> IO ()
+dev opts = do
+  serve (opts { serveReload = True, serveDebug = True })
 
 
 check :: String -> IO ()
@@ -168,14 +157,19 @@ optionParser = info (parser <**> helper) infoMod
 
     commands :: Mod CommandFields (IO ())
     commands =
-      command "serve" (info (serve <$> filename <*> ((Just <$> dbPath) <|> (pure Nothing))) (progDesc "Start server")) <>
+      command "dev" (info (dev <$> serveOptions) (progDesc "Alias for 'serve --debug --reload'")) <>
+      command "serve" (info (serve <$> serveOptions) (progDesc "Start server")) <>
       command "check" (info (check <$> filename) (progDesc "Check for errors"))
 
     filename =
       strArgument (metavar "FILENAME")
 
-    dbPath =
-      strOption (metavar "DB" <> long "db")
+    serveOptions =
+      ServeOptions <$>
+      filename <*>
+      switch (long "reload") <*>
+      switch (long "debug") <*>
+      optional (strOption (metavar "DB" <> long "db"))
 
     infoMod :: InfoMod (IO ())
     infoMod =
