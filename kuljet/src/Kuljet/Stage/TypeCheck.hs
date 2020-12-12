@@ -281,6 +281,7 @@ typeCheck p (At eSpan e) = do
       case p of
         PredExact (TCons "html" []) -> isHtml t
         PredExact (TCons "htmlTagArg" []) -> isHtml t || isAttributes t
+        PredExact (TCons "response" []) -> isHtml t || t == tResponse
         PredExact t' -> Maybe.isJust (matchType t' t)
         PredPostResponse -> isPostFun t || isResponseSubtype t
         PredResponse -> isResponseSubtype t
