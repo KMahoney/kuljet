@@ -272,10 +272,11 @@ interpret env =
         insert :: Symbol -> [(Symbol, Value)] -> Interpreter Value
         insert (Symbol name) fields = do
           db <- asks isDatabase
-          stmt <- liftIO (DB.prepare db sql)
-          liftIO (DB.bindNamed stmt fieldValues)
-          _ <- liftIO (DB.step stmt)
-          return VUnit
+          liftIO $ do
+            stmt <- DB.prepare db sql
+            DB.bindNamed stmt fieldValues
+            _ <- DB.step stmt
+            return VUnit
 
           where
             sql =
