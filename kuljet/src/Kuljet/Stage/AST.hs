@@ -363,7 +363,8 @@ simpleExpression =
     insert = ExpInsert <$> (kwInsert *> parseLocated symbol) <*> parseLocated simpleExpression
     delete = ExpDelete <$> (kwDelete *> parseLocated symbol) <*> (kwWhere *> parseLocated infixExpressions)
 
-    ifExp = ExpIf <$> (kwIf *> parseLocated expression)
+    -- FIXME conflicting 'then'
+    ifExp = ExpIf <$> (kwIf *> parseLocated typeAnnotation)
                   <*> (kwThen *> parseLocated expression)
                   <*> (kwElse *> parseLocated expression)
 
