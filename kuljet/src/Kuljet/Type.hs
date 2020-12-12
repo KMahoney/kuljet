@@ -44,6 +44,10 @@ tHtmlTag :: Type
 tHtmlTag = TCons "htmlTag" []
 
 
+tHtmlTagArg :: Type
+tHtmlTagArg = TCons "htmlTagArg" []
+
+
 tHtmlTagWithAttrs :: Type
 tHtmlTagWithAttrs = TCons "htmlTagWithAttrs" []
 

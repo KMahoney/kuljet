@@ -69,9 +69,7 @@ tableRowType = TRecord . tableFields
 -- Type predicates
 
 data TypePred
-  = PredHtml
-  | PredHtmlTagArg
-  | PredPostResponse
+  = PredPostResponse
   | PredResponse
   | PredExact Type
   | PredFn Type TypePred
@@ -213,7 +211,7 @@ typeCheck p (At eSpan e) = do
         Norm.ExpList exps ->
           if isHtmlPred
           then do
-            mapM_ (typeCheck PredHtml) exps
+            mapM_ (typeCheck (PredExact tHtml)) exps
             return (tList tHtml)
           else case p of
             PredExact (TCons "list" [t]) -> do
@@ -227,8 +225,8 @@ typeCheck p (At eSpan e) = do
           _ <- typeCheck (PredExact tBool) a
           if isHtmlPred
             then do
-              _ <- typeCheck PredHtml b
-              _ <- typeCheck PredHtml c
+              _ <- typeCheck (PredExact tHtml) b
+              _ <- typeCheck (PredExact tHtml) c
               return tHtml
 
             else case p of
@@ -248,7 +246,7 @@ typeCheck p (At eSpan e) = do
       t `elem` [tHtmlTag, tHtmlTagWithAttrs, tHtml, tText, tInt]
 
     isHtmlPred =
-      p `elem` [PredHtml, PredHtmlTagArg, PredResponse, PredPostResponse]
+      p `elem` [PredExact tHtml, PredExact tHtmlTagArg, PredExact tResponse, PredResponse, PredPostResponse]
 
     isAttributes =
       \case
@@ -277,11 +275,11 @@ typeCheck p (At eSpan e) = do
 
     applyPred t =
       case p of
-        PredHtml -> isHtml t
-        PredHtmlTagArg -> isHtml t || isAttributes t
+        PredExact (TCons "html" []) -> isHtml t
+        PredExact (TCons "htmlTagArg" []) -> isHtml t || isAttributes t
+        PredExact t' -> Maybe.isJust (matchType t' t)
         PredPostResponse -> isPostFun t || isResponseSubtype t
         PredResponse -> isResponseSubtype t
-        PredExact t' -> Maybe.isJust (matchType t' t)
         PredQuery -> isQuery t
         PredOrd -> t `elem` [tInt, tText, tTimestamp, tBool]
         PredProject -> isProject t
@@ -290,8 +288,6 @@ typeCheck p (At eSpan e) = do
         
     predExpected =
       case p of
-        PredHtml -> "html"
-        PredHtmlTagArg -> "html or html attributes"
         PredPostResponse -> "html or POST function"
         PredResponse -> "response"
         PredExact t -> typeName t
@@ -326,13 +322,13 @@ infer =
       fType <- infer (discardLocation f)
       case fType of
         Just (TCons "htmlTag" []) -> do
-          argType <- typeCheck PredHtmlTagArg arg
+          argType <- typeCheck (PredExact tHtmlTagArg) arg
           case argType of
             TRecord _ -> return (Just tHtmlTagWithAttrs)
             _ -> return (Just tHtml)
 
         Just (TCons "htmlTagWithAttrs" []) -> do
-          _ <- typeCheck PredHtml arg
+          _ <- typeCheck (PredExact tHtml) arg
           return (Just tHtml)
 
         Just (TCons "->" [argT, retT]) -> do
