@@ -71,6 +71,9 @@ stdEnv =
       , (Symbol "validatePassword", (fn2 fValidatePassword, tText --> tPassword --> tBool))
       , (Symbol "textLength", (fn1 fTextLength, tText --> tInt))
       , (Symbol "regexpMatch", (fn2 fRegexpMatch, tText --> tText --> tBool))
+      , (Symbol "true", (return (VBool True), tBool))
+      , (Symbol "false", (return (VBool False), tBool))
+      , (Symbol "not", (fn1 fNot, tBool --> tBool))
       ]
 
     infixr -->
@@ -235,3 +238,8 @@ fRegexpMatch :: Value -> Value -> Interpreter Value
 fRegexpMatch regexpValue textValue = do
   regexp <- liftIO (RE.makeRegexM (valueAsText regexpValue)) :: Interpreter RE.Regex
   return $ VBool $ RE.matchTest regexp (valueAsText textValue)
+
+
+fNot :: Value -> Interpreter Value
+fNot boolValue =
+  return $ VBool $ not $ valueAsBool boolValue

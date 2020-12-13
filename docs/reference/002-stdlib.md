@@ -92,6 +92,16 @@ listHead : list 'a -> maybe 'a
 The first element of a list.
 </section>
 
+<section>
+```
+true : bool
+false : bool
+not : bool -> bool
+```
+
+Boolean logic.
+</section>
+
 ### Text
 
 <section>
