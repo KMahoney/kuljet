@@ -18,6 +18,8 @@ import qualified Web.Cookie as Cookie
 import qualified System.Entropy as Entropy
 import qualified Data.ByteString.Base64 as Base64
 import qualified Crypto.KDF.BCrypt as Password
+import qualified Text.Regex.PCRE as RE
+import Text.Regex.PCRE.Text()
 
 import Kuljet.Symbol
 import Kuljet.Type
@@ -68,6 +70,7 @@ stdEnv =
       , (Symbol "hashPassword", (fn1 fHashPassword, tText --> tPassword))
       , (Symbol "validatePassword", (fn2 fValidatePassword, tText --> tPassword --> tBool))
       , (Symbol "textLength", (fn1 fTextLength, tText --> tInt))
+      , (Symbol "regexpMatch", (fn2 fRegexpMatch, tText --> tText --> tBool))
       ]
 
     infixr -->
@@ -226,3 +229,9 @@ fValidatePassword passValue hashValue =
 fTextLength :: Value -> Interpreter Value
 fTextLength textValue =
   return $ VInt $ toInteger $ T.length $ valueAsText textValue
+
+
+fRegexpMatch :: Value -> Value -> Interpreter Value
+fRegexpMatch regexpValue textValue = do
+  regexp <- liftIO (RE.makeRegexM (valueAsText regexpValue)) :: Interpreter RE.Regex
+  return $ VBool $ RE.matchTest regexp (valueAsText textValue)

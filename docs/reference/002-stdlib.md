@@ -92,12 +92,22 @@ listHead : list 'a -> maybe 'a
 The first element of a list.
 </section>
 
+### Text
+
 <section>
 ```
 textLength : text -> int
 ```
 
 The length of the given text.
+</section>
+
+<section>
+```
+regexpMatch : text -> text -> bool
+```
+
+`regexpMatch regexp text` tests `text` against `regexp`.
 </section>
 
 ### IO Actions

@@ -52,3 +52,4 @@ executables:
     - entropy
     - base64
     - cryptonite
+    - regex-pcre-builtin
