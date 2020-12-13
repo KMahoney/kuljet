@@ -227,20 +227,18 @@ typeCheck p (At eSpan e) = do
 
         Norm.ExpIf a b c -> do
           _ <- typeCheck (PredExact tBool) a
-          if isHtmlPred
+          if isStrictHtmlPred
             then do
               _ <- typeCheck (PredExact tHtml) b
               _ <- typeCheck (PredExact tHtml) c
               return tHtml
 
-            else case p of
-              PredExact t -> do
-                _ <- typeCheck (PredExact t) b
-                _ <- typeCheck (PredExact t) c
-                return t
-  
-              _ ->
-                locatedFail eSpan ("Expected both 'if' branches to be " <> predExpected)
+            else do
+              t1 <- typeCheck p b
+              t2 <- typeCheck p c
+              if t1 == t2
+                then return t1
+                else locatedFail eSpan ("Expected both 'if' branches to match, but got " <> typeName t1 <> " and " <> typeName t2)
 
         _ ->
           locatedFail eSpan "Cannot infer type"
@@ -249,8 +247,11 @@ typeCheck p (At eSpan e) = do
     isHtml t =
       t `elem` [tHtmlTag, tHtmlTagWithAttrs, tHtml, tText, tInt]
 
+    isStrictHtmlPred =
+      p `elem` [PredExact tHtml, PredExact tHtmlTagArg]
+
     isHtmlPred =
-      p `elem` [PredExact tHtml, PredExact tHtmlTagArg, PredExact tResponse, PredResponse, PredPostResponse]
+      isStrictHtmlPred || p `elem` [PredExact tResponse, PredResponse, PredPostResponse]
 
     isAttributes =
       \case
