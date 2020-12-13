@@ -67,6 +67,7 @@ stdEnv =
       , (Symbol "liftIO", (fn1 fIdentity, v0 --> tIO v0))
       , (Symbol "hashPassword", (fn1 fHashPassword, tText --> tPassword))
       , (Symbol "validatePassword", (fn2 fValidatePassword, tText --> tPassword --> tBool))
+      , (Symbol "textLength", (fn1 fTextLength, tText --> tInt))
       ]
 
     infixr -->
@@ -220,3 +221,8 @@ fHashPassword passValue = do
 fValidatePassword :: Value -> Value -> Interpreter Value
 fValidatePassword passValue hashValue =
   return $ VBool $ Password.validatePassword (valueAsBS passValue) (valueAsBS hashValue)
+
+
+fTextLength :: Value -> Interpreter Value
+fTextLength textValue =
+  return $ VInt $ toInteger $ T.length $ valueAsText textValue

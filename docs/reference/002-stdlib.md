@@ -92,6 +92,14 @@ listHead : list 'a -> maybe 'a
 The first element of a list.
 </section>
 
+<section>
+```
+textLength : text -> int
+```
+
+The length of the given text.
+</section>
+
 ### IO Actions
 
 <section>
