@@ -13,6 +13,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.UUID as UUID
 import qualified Data.UUID.V4 as UUID
+import qualified Data.Time.Clock as Time
 import Control.Monad.Reader
 import qualified Web.Cookie as Cookie
 import qualified System.Entropy as Entropy
@@ -57,6 +58,7 @@ stdEnv =
       [ (Symbol "redirect", (fn1 fRedirect, tText --> tResponse))
       , (Symbol "file", (fn2 fFile, tText --> tText --> tResponse))
       , (Symbol "now", (fNow, tTimestamp))
+      , (Symbol "relativeTime", (fn1 fRelativeTime, tTimestamp --> tText))
       , (Symbol "docType", (return $ VHtml $ HtmlEmitStr "<!DOCTYPE html>", tHtml))
       , (Symbol "emptyHtml", (return $ VHtml $ HtmlEmitStr "", tHtml))
       , (Symbol "genUUID", (return (VAction fUUID), tIO tText))
@@ -147,6 +149,29 @@ fFile contentTypeValue filenameValue =
 fNow :: EnvValue
 fNow =
   VTimestamp <$> asks isTimestamp
+
+
+fRelativeTime :: Value -> Interpreter Value
+fRelativeTime timestampValue = do
+  ts <- asks isTimestamp
+  return $ VText $ timeDiff ts (valueAsTimestamp timestampValue)
+
+  where
+    timeDiff :: Time.UTCTime -> Time.UTCTime -> T.Text
+    timeDiff now ts =
+      let secs = Time.diffUTCTime now ts
+          minute = 60
+          hour = minute * 60
+          day = hour * 24
+          num = T.pack . show . (floor :: RealFrac a => a -> Integer)
+      in
+        if secs < minute * 2
+        then "a few seconds ago"
+        else if secs < hour
+        then num (secs / minute) <> " minutes ago"
+        else if secs < 30 * hour
+        then num (secs / hour) <> " hours ago"
+        else num (secs / day) <> " days ago"
 
 
 fUUID :: Interpreter Value
