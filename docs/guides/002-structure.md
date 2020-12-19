@@ -6,11 +6,11 @@ A Kuljet program is made up of `table` declarations, `let` declarations and
 `serve` declarations.
 
 ```kuljet
-table <name> { <field>: <type>, ... }
+table |name| { |field|: |type|, ... }
 
-let <name> = <expression>
+let |name| = |expression|
 
-serve <method> <path> = <expression>
+serve |method| |path| = |expression|
 ```
 
 ## Table Declaration
@@ -19,7 +19,7 @@ A **table declaration** should reflect the names and
 types of a table in your database. It has the form:
 
 ```kuljet
-table <name> { <field>: <type>, ... }
+table |name| { |field|: |type|, ... }
 ```
 
 e.g.
@@ -34,7 +34,7 @@ A top level **let declaration** binds a name to an expression
 for all following declarations.
 
 ```kuljet
-let <name> = <expression>
+let |name| = |expression|
 ```
 
 e.g.
@@ -51,14 +51,14 @@ A **serve declaration** routes a HTTP request to an
 expression, and has the form:
 
 ```kuljet
-serve <method> <path> = <expression>
+serve |method| |path| = |expression|
 ```
 
-`<method>` is the HTTP verb to match on (`get` or `post`).
+`|method|` is the HTTP verb to match on (`get` or `post`).
 
-`<path>` is a path pattern that can contain named variables.
+`|path|` is a path pattern that can contain named variables.
 
-`<expression>` is a Kuljet expression that results in a valid response.
+`|expression|` is a Kuljet expression that results in a valid response.
 
 e.g.
 

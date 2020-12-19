@@ -2,8 +2,6 @@
 title: Standard Library
 ---
 
-## Standard Environment
-
 <section>
 ```
 now : timestamp
@@ -58,7 +56,7 @@ Retrieve the contents of a browser cookie.
 addCookie : response -> text -> text -> response
 ```
 
-`addCookie <response> <key> <value>` adds a cookie to a response.
+`addCookie response key value` adds a cookie to a response.
 </section>
 
 <section>
@@ -95,7 +93,7 @@ not : bool -> bool
 Boolean logic.
 </section>
 
-### Text
+## Text
 
 <section>
 ```
@@ -121,7 +119,7 @@ commonMark : text -> html
 Parse text as 'common mark'.
 </section>
 
-### IO Actions
+## IO Actions
 
 <section>
 ```
@@ -147,7 +145,7 @@ randomBytes : int -> io text
 Generates N random bytes, base64 encoded. This is useful for generating session keys.
 </section>
 
-### Passwords
+## Passwords
 
 <section>
 ```

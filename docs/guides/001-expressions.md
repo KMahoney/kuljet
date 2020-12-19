@@ -34,7 +34,7 @@ Use parentheses for nested application e.g. `a (a 1 2) 2`.
 Introduce names for expressions by using `let`.
 
 ```kuljet
-let <name> = <expression> in <expression>
+let |name| = |expression| in |expression|
 ```
 
 e.g.
@@ -48,14 +48,14 @@ let x = 1 in x + x
 Write functions with the `fun` keyword:
 
 ```kuljet
-fun <var> -> <expression>
+fun |var| -> |expression|
 ```
 
 You will sometimes need to provide the type of the function argument using
 a *type annotation*:
 
 ```kuljet
-fun <var>: <type> -> <expression>
+fun |var|: |type| -> |expression|
 ```
 
 ## Binary Operators
@@ -77,7 +77,7 @@ Concatenate text with `||`.
 `if` expressions are written:
 
 ```kuljet
-if <condition> then <expression> else <expression>
+if |condition| then |expression| else |expression|
 ```
 
 Unlike C-style languages, they are expressions not statements.
@@ -88,8 +88,8 @@ Unlike C-style languages, they are expressions not statements.
 A `then` expression is written:
 
 ```kuljet
-<expression> [as <name>] then <expression>
+|expression| [as |name|] then |expression|
 ```
 
 where the first expression has type `io`. The `then` expression
-evaluates the IO action, optionally binding the result to `<name>`.
+evaluates the IO action, optionally binding the result to `|name|`.

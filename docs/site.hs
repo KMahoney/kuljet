@@ -3,6 +3,8 @@
 import System.Environment (getArgs)
 import qualified Skylighting.Types as Sky
 import qualified Skylighting.Loader as Sky
+import qualified Skylighting as Sky
+import qualified Text.Blaze.Html.Renderer.Text as Blaze
 import qualified Data.Map as M
 import qualified Data.List as L
 import System.Directory
@@ -14,18 +16,31 @@ import qualified Data.Text.IO as T
 import Lucid
 
 
+data Example
+  = Example { exUrl :: String
+            , exSrc :: String
+            , exName :: String
+            , exRunning :: String
+            }
+  deriving (Show)
+
 data Doc
-  = Doc { docDir :: String, docFilename :: String, docTitle :: T.Text, docBody :: T.Text }
+  = Doc { docUrl :: String
+        , docTitle :: T.Text
+        , docBody :: T.Text
+        }
   deriving (Show)
 
 data Docs
-  = Docs { guides :: [Doc], reference :: [Doc], notes :: [Doc] }
+  = Docs { root :: [Doc]
+         , examples :: [Doc]
+         , guides :: [Doc]
+         , reference :: [Doc]
+         , notes :: [Doc]
+         }
   deriving (Show)
 
 
-docUrl :: Doc -> String
-docUrl (Doc { docDir, docFilename }) =
-  docDir <> (drop 1 . dropWhile (/= '-') . takeWhile (/= '.')) docFilename <> "/"
 
 
 rFile :: String -> IO T.Text
@@ -40,13 +55,13 @@ wFile path content = do
   T.writeFile path content
 
 
-parseDoc :: Sky.Syntax -> String -> String -> String -> IO Doc
-parseDoc syntax base dir filename = do
+parseDoc :: Sky.Syntax -> String -> String -> String -> String -> IO Doc
+parseDoc syntax base dir filename url = do
   source <- rFile path
   Pan.runIOorExplode $ do
     pd@(Pan.Pandoc meta _) <- Pan.readMarkdown readOpts source
     out <- Pan.writeHtml5String (writeOpts syntax) pd
-    return $ Doc dir filename (titleText meta) out
+    return $ Doc url (titleText meta) out
 
   where
     path = base <> dir <> filename
@@ -56,30 +71,66 @@ parseDoc syntax base dir filename = do
 parseDir :: Sky.Syntax -> String -> String -> IO [Doc]
 parseDir syntax base dir = do
   paths <- L.sort <$> listDirectory ("." <> dir)
-  mapM (parseDoc syntax base dir) paths
+  mapM (\path -> parseDoc syntax base dir path (url path)) paths
+
+  where
+    url :: String -> String
+    url docFilename =
+      dir <> (drop 1 . dropWhile (/= '-') . takeWhile (/= '.')) docFilename <> "/"
+
+
+parseExample :: Sky.Syntax -> Example -> IO Doc
+parseExample syntax (Example { exSrc, exUrl, exName, exRunning }) = do
+  source <- T.readFile exSrc
+  let Right tokens = Sky.tokenize (Sky.TokenizerConfig (syntaxMap syntax) False) syntax source
+      srcHtml = LT.toStrict $ Blaze.renderHtml $ Sky.formatHtmlBlock formatOpts tokens
+      pageHtml = LT.toStrict $ renderText $ examplePage srcHtml
+  return $ Doc ("/examples/" <> exUrl <> "/") (T.pack exName) pageHtml
+
+  where
+    formatOpts = Sky.defaultFormatOpts
+
+    examplePage :: T.Text -> Html ()
+    examplePage srcHtml = do
+      p_ $ do
+        "Running on "
+        a_ [ href_ (T.pack exRunning) ] (toHtml exRunning)
+      toHtmlRaw srcHtml
 
 
 main :: IO ()
 main = do
-  [srcDir, destDir] <- getArgs
+  [srcDir, exampleDir, destDir] <- getArgs
 
   Right syntax <- Sky.loadSyntaxFromFile "kuljet-syntax.xml"
 
-  intro <- parseDoc syntax srcDir "/" "intro.md"
-  install <- parseDoc syntax srcDir "/" "install.md"
-  docs <- Docs <$> parseDir syntax srcDir "/guides/"
-               <*> parseDir syntax srcDir "/reference/"
-               <*> parseDir syntax srcDir "/notes/"
+  rootDocs <- sequence
+    [ parseDoc syntax srcDir "/" "intro.md" "/"
+    , parseDoc syntax srcDir "/" "install.md" "/install/"
+    ]
+
+  exampleDocs <-
+    let
+      chatExample = Example { exUrl = "chat"
+                            , exSrc = exampleDir <> "/chat/chat.kj"
+                            , exName = "A Simple Chat Server"
+                            , exRunning = "https://chat.kuljet.com"
+                            }
+    in
+      mapM (parseExample syntax) [ chatExample ]
+    
+  docs <- Docs rootDocs exampleDocs
+            <$> parseDir syntax srcDir "/guides/"
+            <*> parseDir syntax srcDir "/reference/"
+            <*> parseDir syntax srcDir "/notes/"
 
   createDirectoryIfMissing False destDir
   rFile (srcDir <> "/css/default.css") >>= wFile (destDir <> "/default.css")
   rFile (srcDir <> "/images/ext.svg") >>= wFile (destDir <> "/ext.svg")
   rFile (srcDir <> "/images/bars.svg") >>= wFile (destDir <> "/bars.svg")
-  wFile (destDir <> "/index.html") (renderPage docs intro)
 
-  createDirectoryIfMissing True (destDir <> "/install")
-  wFile (destDir <> "/install/index.html") (renderPage docs install)
-
+  mapM_ (writeDoc destDir docs) (root docs)
+  mapM_ (writeDoc destDir docs) (examples docs)
   mapM_ (writeDoc destDir docs) (guides docs)
   mapM_ (writeDoc destDir docs) (reference docs)
   mapM_ (writeDoc destDir docs) (notes docs)
@@ -114,9 +165,14 @@ readOpts =
 
 writeOpts :: Sky.Syntax -> Pan.WriterOptions
 writeOpts syntax =
-  Pan.def { Pan.writerSyntaxMap = M.fromList [("kuljet", syntax)] }
+  Pan.def { Pan.writerSyntaxMap = syntaxMap syntax }
 
 
+syntaxMap :: Sky.Syntax -> Sky.SyntaxMap
+syntaxMap syntax =
+  M.fromList [("kuljet", syntax)]
+
+  
 page :: Docs -> Doc -> Html ()
 page docs doc = do
   doctype_
@@ -133,9 +189,11 @@ page docs doc = do
         ul_ $ do
           li_ "Kuljet"
           ul_ $ do
-            li_ (a_ [href_ "/"] "Introduction")
-            li_ (a_ [href_ "/install/"] "Install")
+            mapM_ navLink (root docs)
             li_ (a_ [href_ "https://github.com/KMahoney/kuljet"] (ext <> "GitHub"))
+          li_ "Examples"
+          ul_ $ do
+            mapM_ navLink (examples docs)
           li_ "Guides"
           ul_ $ do
             mapM_ navLink (guides docs)
@@ -161,4 +219,5 @@ page docs doc = do
 
     navLink :: Doc -> Html ()
     navLink navDoc =
-      li_ (a_ [href_ (T.pack (docUrl navDoc))] (toHtml (docTitle navDoc)))
+      li_ [class_ (if docUrl navDoc == docUrl doc then "selected" else "")]
+        (a_ [href_ (T.pack (docUrl navDoc))] (toHtml (docTitle navDoc)))

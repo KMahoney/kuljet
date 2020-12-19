@@ -2,8 +2,6 @@
 title: Introduction
 ---
 
-**[A WORK IN PROGRESS - NOT THAT USEFUL YET!]**
-
 *Kuljet* is a happy little language for writing database-backed HTML applications.
 Its type checking and integration with relational databases should help you whip up
 prototypes in no time.
@@ -24,51 +22,18 @@ Features:
 serve get / = "Hello World!"
 ```
 
-## Example
+## Current State
 
-Here's a [simple chat application](https://chat.kuljet.com)
+*Kuljet* is still a work in progress. Expect it to change
+dramatically.
 
-```kuljet
-table messages { message : text, timestamp : timestamp }
+It can be used for very simple HTML apps, but there will likely be a
+lot of missing functionality and bugs.
 
-serve get / =
-  let template = fun content ->
-    [ docType
-    , <html> [ <head> [ <link> { href = "/style.css", rel = "stylesheet" }
-                      , <meta> { name = "viewport", content = "width=device-width, intial-scale=1" }
-                      ]
-             , <body> content
-             ]
-    ]
-  in
-  let messagesHtml =
-    let query = (messages order timestamp desc limit 100) order timestamp asc in
-    <div> { class = "messages" }
-      (query select { message } -> <div> { class = "message" } message)
-  in
-  let formHtml =
-    let formAttrs = { method = "POST", action = "/msg", class = "inputForm" } in
-    let nameInput = <input> { name = "message", class = "inputMessage", autofocus = "true" } in
-    let submitInput = <input> { type = "submit" } in
-    <form> formAttrs [ nameInput, submitInput ]
-  in
-  template [ messagesHtml, formHtml ]
 
-let insertMessage =
-  fun msg ->
-    insert messages { message = msg, timestamp = now }
+## What Next?
 
-serve post /msg =
-  fun formVars: { message: text } ->
-    insertMessage formVars.message then
-    redirect "/"
+Take a look at **the examples** such as [A Simple Chat Server](/examples/chat/).
 
-serve get /style.css =
-  file "text/css" "style.css"
-```
-
-### Running the Example
-
-```
-cd examples/chat && kuljet serve chat.kj
-```
+If you'd like to start writing Kuljet, read the [installation instructions](/install/) and
+start looking through [the guides](/guides/expressions/).

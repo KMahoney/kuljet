@@ -1,2 +1,2 @@
 #!/bin/bash
-find . -name '*.md' -or -name '*.hs' -or -name '*.css' | entr stack runhaskell site.hs . _site
+find . -name '*.md' -or -name '*.hs' -or -name '*.css' -or -name '*.xml' | entr stack runhaskell site.hs . ../examples _site

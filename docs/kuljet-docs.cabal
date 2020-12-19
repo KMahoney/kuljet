@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 0c79b5061cccf67fd37649ae74c3b331fdfc8481a4470f050134487555fd2525
+-- hash: aa7a50fe47339b2cc6b7344ab7f88fd6408c985146a51c6fa786b7ee2576fbdd
 
 name:           kuljet-docs
 version:        0.1.0.0
@@ -28,10 +28,12 @@ executable kuljet-site-generator
   ghc-options: -Wall -Werror -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , blaze-html
     , containers
     , directory
     , lucid
     , pandoc
+    , skylighting
     , skylighting-core
     , text
   default-language: Haskell2010

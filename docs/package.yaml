@@ -26,6 +26,8 @@ executables:
     - directory
     - lucid
     - skylighting-core
+    - skylighting
     - pandoc
+    - blaze-html
     - containers
     - text

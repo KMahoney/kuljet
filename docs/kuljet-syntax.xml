@@ -38,8 +38,7 @@
         <DetectChar attribute="string" context="#pop" char="&quot;" />
       </context>
       <context attribute="var" lineEndContext="#stay" name="var" >
-        <DetectChar attribute="normal" context="#pop" char="&lt;" />
-        <DetectIdentifier attribute="var" context="#pop" />
+        <RegExpr attribute="var" context="#pop" String="[|_a-zA-Z0-9]+" />
       </context>
     </contexts>
     <itemDatas>

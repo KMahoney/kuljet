@@ -109,13 +109,13 @@ or the expression will result in a type error.
 An `insert` expression has the syntax:
 
 ```kuljet
-insert <tableName> <expression>
+insert |tableName| |expression|
 ```
 
-where `<expression>` is a record matching the type of a table row.
+where `|expression|` is a record matching the type of a table row.
 
 An insert expression has type `io unit`, meaning it is an IO action 
-that can be executed with the `<io-expression> then <expression>` form.
+that can be executed with the `|io-expression| then |expression|` form.
 
 It is common to insert data in response to a POST request, and then redirect:
 
