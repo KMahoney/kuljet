@@ -203,7 +203,7 @@ typeCheck p (At eSpan e) = do
             TCons "query" [TRecord fields] ->
               if isHtmlPred
               then do
-                (yielder', _) <- withTypeEnv (\env -> M.union env (M.fromList fields)) (typeCheck (PredExact tHtml) yielder)
+                (yielder', _) <- withTypeEnv (\env -> M.union (M.fromList fields) env) (typeCheck (PredExact tHtml) yielder)
                 return (At eSpan (ExpYield queryExp' yielder' (M.fromList fields)), tHtml)
               else case p of
                 PredExact (TCons "list" [elemT]) -> do
