@@ -64,7 +64,7 @@ data Exp
   | ExpDot (Located Exp) (Located Symbol)
   | ExpInsert (Located Symbol) (Located Exp)
   | ExpDelete (Located Symbol) (QB.Expression, QueryArgs)
-  | ExpYield (QB.Query, QueryArgs) (Located Exp)
+  | ExpYield (QB.Query, QueryArgs) (Located Exp) [Type]
   | ExpBinOp AST.BinOp (Located Exp) (Located Exp)
   | ExpIf (Located Exp) (Located Exp) (Located Exp)
   deriving (Show)
@@ -150,8 +150,9 @@ compileExp (At eSpan e) =
       let fields = S.fromList $ map fst $ AST.tableFields $ env M.! discardLocation sym
       At eSpan <$> (ExpDelete sym <$> runStateT (compileQueryExp fields value) M.empty)
 
-    AST.ExpYield a b ->
-      At eSpan <$> (ExpYield <$> runStateT (compileQuery a) M.empty <*> compileExp b)
+    AST.ExpYield a b fieldTypes -> do
+      (query, queryArgs) <- runStateT (compileQuery a) M.empty
+      At eSpan <$> (ExpYield (query, queryArgs) <$> compileExp b <*> pure (map ((fieldTypes M.!) . Symbol) (QB.columnNames query)))
 
     AST.ExpBinOp op a b ->
       At eSpan <$> (ExpBinOp op <$> compileExp a <*> compileExp b)
@@ -311,7 +312,7 @@ containsField env =
     AST.ExpDelete _ (At _ a) ->
       containsField env a
 
-    AST.ExpYield (At _ a) (At _ b) ->
+    AST.ExpYield (At _ a) (At _ b) _ ->
       containsField env a || containsField env b
       
     AST.ExpQLimit (At _ a) (At _ b) ->

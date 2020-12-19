@@ -5,7 +5,7 @@ module Kuljet.Stage.TypeCheck
 
     -- mimic the AST interface
   , Endpoint(..)
-  , Norm.Exp(..)
+  , Exp(..)
   , Norm.Literal(..)
   , Norm.QOrder(..)
   , Norm.Annotated(..)
@@ -47,9 +47,31 @@ data Module =
 data Endpoint =
   Serve { serveMethod :: Method
         , servePath :: Path
-        , serveExp :: Located Norm.Exp
+        , serveExp :: Located Exp
         , serveType :: Type
         }
+  deriving (Show)
+
+data Exp
+  = ExpVar (Located Symbol)
+  | ExpLiteral Norm.Literal
+  | ExpApp (Located Exp) (Located Exp)
+  | ExpAbs (Norm.Annotated Symbol) (Located Exp)
+  | ExpThen (Maybe Symbol) (Located Exp) (Located Exp)
+  | ExpList [Located Exp]
+  | ExpRecord [(Symbol, Located Exp)]
+  | ExpAnnotated (Located Exp) Type
+  | ExpDot (Located Exp) (Located Symbol)
+  | ExpInsert (Located Symbol) (Located Exp)
+  | ExpDelete (Located Symbol) (Located Exp)
+  | ExpYield (Located Exp) (Located Exp) (M.Map Symbol Type)
+  | ExpQLimit (Located Exp) (Located Exp)
+  | ExpQOrder (Located Exp) (Located Exp) Norm.QOrder
+  | ExpQSelect (Located Exp) (Located Exp)
+  | ExpQWhere (Located Exp) (Located Exp)
+  | ExpQNatJoin (Located Exp) (Located Exp)
+  | ExpBinOp Norm.BinOp (Located Exp) (Located Exp)
+  | ExpIf (Located Exp) (Located Exp) (Located Exp)
   deriving (Show)
 
 
@@ -131,8 +153,8 @@ typeCheckModule stdEnv normalisedModule = do
       Norm.moduleTables normalisedModule
       
     typeCheckDecl tables (Norm.Serve { Norm.serveMethod, Norm.servePath, Norm.serveExp }) = do
-      serveType <- runReaderT (typeCheck (declType serveMethod) serveExp) (initialEnv tables servePath)
-      return $ Serve { serveMethod, servePath, serveExp, serveType }
+      (typedExp, serveType) <- runReaderT (typeCheck (declType serveMethod) serveExp) (initialEnv tables servePath)
+      return $ Serve { serveMethod, servePath, serveExp = typedExp, serveType }
 
     typeCheckTable :: Norm.Table -> Either Error Table
     typeCheckTable table =
@@ -164,28 +186,29 @@ typeCheckModule stdEnv normalisedModule = do
       else PredResponse
 
 
-typeCheck :: TypePred -> Located Norm.Exp -> TypeCheck Type
+typeCheck :: TypePred -> Located Norm.Exp -> TypeCheck (Located Exp, Type)
 typeCheck p (At eSpan e) = do
-  eType <- infer e
-  case eType of
-    Just t ->
+  inferred <- infer e
+  case inferred of
+    Just (e', t) ->
       if applyPred t
-      then return t
+      then return (At eSpan e', t)
       else locatedFail eSpan ("Expression is " <> typeName t <> ", but expected " <> predExpected)
       
     Nothing ->
       case e of
         Norm.ExpYield queryExp yielder -> do
-          queryType <- typeCheck PredQuery queryExp
+          (queryExp', queryType) <- typeCheck PredQuery queryExp
           case queryType of
             TCons "query" [TRecord fields] ->
               if isHtmlPred
               then do
-                _ <- withTypeEnv (\env -> M.union env (M.fromList fields)) (typeCheck (PredExact tHtml) yielder)
-                return tHtml
+                (yielder', _) <- withTypeEnv (\env -> M.union env (M.fromList fields)) (typeCheck (PredExact tHtml) yielder)
+                return (At eSpan (ExpYield queryExp' yielder' (M.fromList fields)), tHtml)
               else case p of
-                PredExact (TCons "list" [elemT]) ->
-                  tList <$> withTypeEnv (\env -> M.union env (M.fromList fields)) (typeCheck (PredExact elemT) yielder)
+                PredExact (TCons "list" [elemT]) -> do
+                  (yielder', yieldT) <- withTypeEnv (\env -> M.union env (M.fromList fields)) (typeCheck (PredExact elemT) yielder)
+                  return (At eSpan (ExpYield queryExp' yielder' (M.fromList fields)), tList yieldT)
 
                 _ ->
                   locatedFail eSpan ("Expression is a yield, but expected " <> predExpected)
@@ -196,14 +219,14 @@ typeCheck p (At eSpan e) = do
         Norm.ExpAbs sym body ->
           case p of
             PredExact (TCons "->" [argT, retT]) -> do
-              retT' <- introduce (Norm.discardAnnotation sym) argT (typeCheck (PredExact retT) body)
-              return (tFn argT retT')
+              (body', retT') <- introduce (Norm.discardAnnotation sym) argT (typeCheck (PredExact retT) body)
+              return (At eSpan (ExpAbs sym body'), tFn argT retT')
 
             PredPostResponse ->
               case sym of
                 Norm.Annotated argName (Just argT) -> do
-                  retT <- introduce argName argT (typeCheck PredResponse body)
-                  return (tFn argT retT)
+                  (body', retT) <- introduce argName argT (typeCheck PredResponse body)
+                  return (At eSpan (ExpAbs sym body'), tFn argT retT)
 
                 _ ->
                   locatedFail eSpan "Type annotation required"
@@ -215,29 +238,29 @@ typeCheck p (At eSpan e) = do
         Norm.ExpList exps ->
           if isHtmlPred
           then do
-            mapM_ (typeCheck (PredExact tHtml)) exps
-            return (tList tHtml)
+            exps' <- map fst <$> mapM (typeCheck (PredExact tHtml)) exps
+            return (At eSpan (ExpList exps'), tList tHtml)
           else case p of
             PredExact (TCons "list" [t]) -> do
-              mapM_ (typeCheck (PredExact t)) exps
-              return (tList t)
+              exps' <- map fst <$> mapM (typeCheck (PredExact t)) exps
+              return (At eSpan (ExpList exps'), tList t)
 
             _ ->
               locatedFail eSpan ("Expression is a list, but expected " <> predExpected)
 
         Norm.ExpIf a b c -> do
-          _ <- typeCheck (PredExact tBool) a
+          (a', _) <- typeCheck (PredExact tBool) a
           if isStrictHtmlPred
             then do
-              _ <- typeCheck (PredExact tHtml) b
-              _ <- typeCheck (PredExact tHtml) c
-              return tHtml
+              (b', _) <- typeCheck (PredExact tHtml) b
+              (c', _) <- typeCheck (PredExact tHtml) c
+              return (At eSpan (ExpIf a' b' c'), tHtml)
 
             else do
-              t1 <- typeCheck p b
-              t2 <- typeCheck p c
+              (b', t1) <- typeCheck p b
+              (c', t2) <- typeCheck p c
               if t1 == t2
-                then return t1
+                then return (At eSpan (ExpIf a' b' c'), t1)
                 else locatedFail eSpan ("Expected both 'if' branches to match, but got " <> typeName t1 <> " and " <> typeName t2)
 
         _ ->
@@ -302,7 +325,7 @@ typeCheck p (At eSpan e) = do
         PredProject -> "a projection"
 
 
-infer :: Norm.Exp -> TypeCheck (Maybe Type)
+infer :: Norm.Exp -> TypeCheck (Maybe (Exp, Type))
 infer =
   \case
     Norm.ExpLiteral lit ->
@@ -311,91 +334,107 @@ infer =
               Norm.LitStr _ -> tText
               Norm.LitInt _ -> tInt
       in
-      return (Just t)
+      return (Just (ExpLiteral lit, t))
 
     Norm.ExpVar (At varSpan var) -> do
       t <- lookupType var
       case t of
         Just t' ->
-          return (Just t')
+          return (Just (ExpVar (At varSpan var), t'))
 
         Nothing ->
           locatedFail varSpan ("Unrecognised variable '" <> symbolName var <> "'")
 
-    Norm.ExpApp f arg -> do
-      fType <- infer (discardLocation f)
-      case fType of
-        Just (TCons "htmlTag" []) -> do
-          argType <- typeCheck (PredExact tHtmlTagArg) arg
-          case argType of
-            TRecord _ -> return (Just tHtmlTagWithAttrs)
-            _ -> return (Just tHtml)
+    Norm.ExpApp (At fSpan f) arg ->
+      infer f >>= \case
+      Just (f', TCons "htmlTag" []) -> do
+        (arg', argType) <- typeCheck (PredExact tHtmlTagArg) arg
+        case argType of
+          TRecord _ -> return (Just (ExpApp (At fSpan f') arg', tHtmlTagWithAttrs))
+          _ -> return (Just (ExpApp (At fSpan f') arg', tHtml))
 
-        Just (TCons "htmlTagWithAttrs" []) -> do
-          _ <- typeCheck (PredExact tHtml) arg
-          return (Just tHtml)
+      Just (f', TCons "htmlTagWithAttrs" []) -> do
+        (arg', _) <- typeCheck (PredExact tHtml) arg
+        return (Just (ExpApp (At fSpan f') arg', tHtml))
 
-        Just (TCons "->" [argT, retT]) -> do
-          argT' <- typeCheck (PredExact argT) arg
-          case matchType argT argT' of
-            Just subst -> return (Just (applySubst subst retT))
-            Nothing -> locatedFail (locatedSpan arg) ("Expression is " <> typeName argT' <> ", but expecting " <> typeName argT)
+      Just (f', TCons "->" [argT, retT]) -> do
+        (arg', argT') <- typeCheck (PredExact argT) arg
+        case matchType argT argT' of
+          Just subst -> return (Just (ExpApp (At fSpan f') arg', applySubst subst retT))
+          Nothing -> locatedFail (locatedSpan arg) ("Expression is " <> typeName argT' <> ", but expecting " <> typeName argT)
 
-        Just t ->
-          locatedFail (locatedSpan f) ("Expression has type '" <> typeName t <> "', but a function is expected")
+      Just (_, t) ->
+        locatedFail fSpan ("Expression has type '" <> typeName t <> "', but a function is expected")
 
-        Nothing ->
-          return Nothing
+      Nothing ->
+        return Nothing
 
-    Norm.ExpAbs (Norm.Annotated sym (Just t)) body ->
-      (fmap (tFn t)) <$> introduce sym t (infer (discardLocation body))
-
-    Norm.ExpThen var a b ->
-      infer (discardLocation a) >>= \case
-      Just (TCons "io" [varT]) -> maybe (infer (discardLocation b)) (\sym -> introduce sym varT (infer (discardLocation b))) var >>= \case
-        t@(Just (TCons "io" _)) -> return t
-        Just t -> return (Just (tIO t))
+    Norm.ExpAbs arg@(Norm.Annotated sym (Just argT)) (At bodySpan body) -> do
+      introduce sym argT (infer body) >>= \case
+        Just (body', bodyT) -> return (Just (ExpAbs arg (At bodySpan body'), tFn argT bodyT))
         Nothing -> return Nothing
-      Just t -> locatedFail (locatedSpan a) ("Expression has type '" <> typeName t <> "', but an 'io' action is expected")
-      Nothing -> return Nothing
+
+    Norm.ExpThen var (At aSpan a) (At bSpan b) ->
+      infer a >>= \case
+      Just (a', TCons "io" [varT]) ->
+        maybe (infer b) (\sym -> introduce sym varT (infer b)) var >>=
+        \case
+          Just (b', t@(TCons "io" _)) ->
+            return (Just (ExpThen var (At aSpan a') (At bSpan b'), t))
+
+          Just (b', t) ->
+            -- Lift the type into 'io' if needed
+            return (Just (ExpThen var (At aSpan a') (At bSpan b'), tIO t))
+
+          Nothing ->
+            return Nothing
+
+      Just (_, t) ->
+        locatedFail aSpan ("Expression has type '" <> typeName t <> "', but an 'io' action is expected")
+
+      Nothing ->
+        return Nothing
 
     Norm.ExpAnnotated e t -> do
-      _ <- typeCheck (PredExact t) e
-      return (Just t)
+      (At _ e', _) <- typeCheck (PredExact t) e
+      return (Just (e', t))
 
-    Norm.ExpRecord fields ->
-      (fmap TRecord) <$> inferFields [] fields
+    Norm.ExpRecord fields -> do
+      fmap (\fields' -> ( ExpRecord (map (\(s, (e, _)) -> (s, e)) fields')
+                        , TRecord (map (\(s, (_, t)) -> (s, t)) fields')
+                        ))
+        <$> inferFields [] fields
 
       where
-        inferFields :: [(Symbol, Type)] -> [(Symbol, Located Norm.Exp)] -> TypeCheck (Maybe [(Symbol, Type)])
+        inferFields :: [(Symbol, (Located Exp, Type))] -> [(Symbol, Located Norm.Exp)] -> TypeCheck (Maybe [(Symbol, (Located Exp, Type))])
         inferFields accum =
           \case
             [] ->
               return (Just (reverse accum))
-            ((sym, At _ e) : fs) -> do
-              t <- infer e
-              case t of
-                Just t' -> inferFields ((sym, t') : accum) fs
+            ((sym, At eSpan e) : fs) ->
+              infer e >>=
+              \case
+                Just (e', t) -> inferFields ((sym, (At eSpan e', t)) : accum) fs
                 Nothing -> return Nothing
 
-    Norm.ExpDot (At rSpan r) (At fieldSpan fieldName) -> do
-      rType <- infer r
-      case rType of
-        Just (TRecord fields) ->
+    Norm.ExpDot (At recordSpan record) field@(At fieldSpan fieldName) ->
+      infer record >>=
+      \case
+        Just (record', TRecord fields) ->
           case lookup fieldName fields of
-            Just fieldT -> return (Just fieldT)
+            Just fieldT -> return (Just (ExpDot (At recordSpan record') field, fieldT))
             Nothing -> locatedFail fieldSpan ("Record does not contain field '" <> symbolName fieldName <> "'")
 
         Just _ ->
-          locatedFail rSpan "Expecting a record"
+          locatedFail recordSpan "Expecting a record"
 
         Nothing ->
           return Nothing
 
     Norm.ExpBinOp op a b -> do
-      aType <- typeCheck opPred a
-      _ <- typeCheck (PredExact aType) b
-      return (Just opRetT)
+      (a', aType) <- typeCheck opPred a
+      (b', _) <- typeCheck (PredExact aType) b
+      return (Just (ExpBinOp op a' b', opRetT))
 
       where
         (opPred, opRetT) =
@@ -413,49 +452,52 @@ infer =
             Norm.OpOr -> (PredExact tBool, tBool)
             Norm.OpConcat -> (PredExact tText, tText)
 
-    Norm.ExpInsert (At tableSpan tableName) value ->
+    Norm.ExpInsert locTable@(At tableSpan tableName) value ->
       lookupTable tableName >>= \case
       Just table -> do
-        _ <- typeCheck (PredExact (tableRowType table)) value
-        return (Just (tIO tUnit))
+        (value', _) <- typeCheck (PredExact (tableRowType table)) value
+        return (Just (ExpInsert locTable value', tIO tUnit))
       Nothing ->
         locatedFail tableSpan "Unknown table"
 
-    Norm.ExpDelete (At tableSpan tableName) whereExp ->
+    Norm.ExpDelete locTable@(At tableSpan tableName) whereExp ->
       lookupTable tableName >>= \case
       Just (Table { tableFields }) -> do
-        _ <- withTypeEnv (\env -> M.union env (M.fromList tableFields)) (typeCheck (PredExact tBool) whereExp)
-        return (Just (tIO tUnit))
+        (whereExp', _) <- withTypeEnv (\env -> M.union env (M.fromList tableFields)) (typeCheck (PredExact tBool) whereExp)
+        return (Just (ExpDelete locTable whereExp', tIO tUnit))
       Nothing ->
         locatedFail tableSpan "Unknown table"
 
     Norm.ExpQLimit queryExp limitExp -> do
-      queryType <- typeCheck PredQuery queryExp
-      _ <- typeCheck (PredExact tInt) limitExp
-      return (Just queryType)
+      (queryExp', queryType) <- typeCheck PredQuery queryExp
+      (limitExp', _) <- typeCheck (PredExact tInt) limitExp
+      return (Just (ExpQLimit queryExp' limitExp', queryType))
 
     Norm.ExpQWhere queryExp whereExp -> do
-      queryType <- typeCheck PredQuery queryExp
+      (queryExp', queryType) <- typeCheck PredQuery queryExp
       case queryType of
         TCons "query" [TRecord fields] -> do
-          _ <- withTypeEnv (\env -> M.union env (M.fromList fields)) (typeCheck (PredExact tBool) whereExp)
-          return (Just queryType)
+          (whereExp', _) <- withTypeEnv (\env -> M.union env (M.fromList fields)) (typeCheck (PredExact tBool) whereExp)
+          return (Just (ExpQWhere queryExp' whereExp', queryType))
 
         _ ->
           locatedFail (locatedSpan queryExp) "Expecting a query"
 
     Norm.ExpQNatJoin a b -> do
-      a' <- typeCheck PredQuery a >>= asFields (locatedSpan a)
-      b' <- typeCheck PredQuery b >>= asFields (locatedSpan b)
-      let fieldsIntersect = M.intersectionWith (,) (M.fromList a') (M.fromList b')
-          fieldsUnion = a' ++ filter (\(key, _) -> key `notElem` map fst a') b'
+      (a', aT) <- typeCheck PredQuery a
+      aFields <- asFields (locatedSpan a) aT
+      (b', bT) <- typeCheck PredQuery b
+      bFields <- asFields (locatedSpan b) bT
+      let fieldsIntersect = M.intersectionWith (,) (M.fromList aFields) (M.fromList bFields)
+          fieldsUnion = aFields ++ filter (\(key, _) -> key `notElem` map fst aFields) bFields
       if M.null fieldsIntersect
         then locatedFail (locatedSpan b) "Right query does not have fields in command with left query"
         else do
         mapM_ checkFieldType (M.toList fieldsIntersect)
-        return $ Just $ tQuery $ TRecord fieldsUnion
+        return $ Just $ (ExpQNatJoin a' b', tQuery (TRecord fieldsUnion))
 
       where
+        asFields :: SourceSpan -> Type -> TypeCheck [(Symbol, Type)]
         asFields loc =
           \case
             TCons "query" [TRecord fields] ->
@@ -471,20 +513,21 @@ infer =
                "Right query has conflicting type for field '" <> key <> "': " <> typeName t1 <> " vs. " <> typeName t2
 
     Norm.ExpQSelect queryExp selectExp -> do
-      queryType <- typeCheck PredQuery queryExp
+      (queryExp', queryType) <- typeCheck PredQuery queryExp
       case queryType of
-        TCons "query" [TRecord fields] ->
-          (Just . TCons "query" . return) <$> withTypeEnv (\env -> M.union env (M.fromList fields)) (typeCheck PredProject selectExp)
+        TCons "query" [TRecord fields] -> do
+          (selectExp', selectType) <- withTypeEnv (\env -> M.union env (M.fromList fields)) (typeCheck PredProject selectExp)
+          return $ Just (ExpQSelect queryExp' selectExp', TCons "query" [selectType])
 
         _ ->
           locatedFail (locatedSpan queryExp) "Expecting a query"
 
-    Norm.ExpQOrder queryExp orderExp _ -> do
-      queryType <- typeCheck PredQuery queryExp
+    Norm.ExpQOrder queryExp orderExp orderDir -> do
+      (queryExp', queryType) <- typeCheck PredQuery queryExp
       case queryType of
         TCons "query" [TRecord fields] -> do
-          _ <- withTypeEnv (\env -> M.union env (M.fromList fields)) (typeCheck PredOrd orderExp)
-          return (Just queryType)
+          (orderExp', _) <- withTypeEnv (\env -> M.union env (M.fromList fields)) (typeCheck PredOrd orderExp)
+          return $ Just (ExpQOrder queryExp' orderExp' orderDir, queryType)
               
         _ ->
           locatedFail (locatedSpan queryExp) "Expecting a query"

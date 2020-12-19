@@ -6,6 +6,7 @@ import qualified Data.Maybe as Maybe
 import qualified Data.Text.Encoding as T
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Time.Clock as Time
+import qualified Data.Time.Format as Time
 import qualified Network.Wai as Wai
 import qualified Network.Wai.Parse as Wai
 import qualified Network.HTTP.Types.Status as HTTP
@@ -252,24 +253,33 @@ interpret env =
         then interpret env (discardLocation b)
         else interpret env (discardLocation c)
       
-    AST.ExpYield (query, queryArgs) yieldExp -> do
+    AST.ExpYield (query, queryArgs) yieldExp types -> do
       db <- asks isDatabase
       queryArgs' <- mapM (interpret env) queryArgs
       result <- liftIO (Query.execute db query queryArgs')
-      VList <$> mapM (\row -> interpret (M.union (rowToEnv row) env) (discardLocation yieldExp)) result
+      VList <$> mapM (\row -> interpret (M.union (rowToEnv (zip types row)) env) (discardLocation yieldExp)) result
 
       where
-        rowToEnv :: [(T.Text, DB.SQLData)] -> Env
+        rowToEnv :: [(Type, (T.Text, DB.SQLData))] -> Env
         rowToEnv =
-          M.fromList . map (\(name, value) -> (Symbol name, return $ dbValue value))
+          M.fromList . map (\(t, (name, value)) -> (Symbol name, return $ dbValue t value))
 
-        -- FIXME: decode based on expected type
-        dbValue :: DB.SQLData -> Value
-        dbValue =
-          \case
-            DB.SQLText text -> VText text
-            DB.SQLInteger i -> VInt (toInteger i)
-            _ -> undefined -- TODO
+        dbValue :: Type -> DB.SQLData -> Value
+        dbValue t value =
+          case (t, value) of
+            (TCons "bool" [], DB.SQLInteger i) ->
+              VBool (i /= 0)
+            (TCons "text" [], DB.SQLText text) ->
+              VText text
+            (TCons "password" [], DB.SQLText text) ->
+              VText text
+            (TCons "timestamp" [], DB.SQLText text) ->
+              -- FIXME: fail more gracefully
+              VTimestamp (Time.parseTimeOrError True Time.defaultTimeLocale "%Y-%m-%dT%H:%M:%S" (T.unpack text))
+            (TCons "int" [], DB.SQLInteger i) ->
+              VInt (toInteger i)
+            _ ->
+              error $ "SQL decode mismatch " <> show t <> " - " <> show value
 
     AST.ExpInsert (At _ tableName) (At _ value) -> do
       value' <- interpret env value
