@@ -223,6 +223,9 @@ interpret env =
 
     AST.ExpRecord fields ->
       VRecord . M.fromList <$> mapM (\(key, value) -> (key,) <$> interpret env (discardLocation value)) fields
+
+    AST.ExpTagF (Symbol tag) ->
+      return $ VHtml $ HtmlEmitTag tag
         
     AST.ExpDot (At _ r) (At _ fieldName) -> do
       fields <- valueAsRecord <$> interpret env r

@@ -32,6 +32,7 @@
         <keyword attribute="keyword" context="#stay" String="keywords" />
         <keyword attribute="keyword" context="var" String="varKeywords" />
         <DetectChar attribute="string" context="string" char="&quot;" />
+        <RegExpr attribute="tag" context="#stay" String="&lt;[a-z]+&gt;" />
       </context>
       <context attribute="string" lineEndContext="#stay" name="string" >
         <DetectChar attribute="string" context="#pop" char="&quot;" />
@@ -45,6 +46,7 @@
       <itemData name="normal" defStyleNum="dsNormal" />
       <itemData name="keyword" defStyleNum="dsKeyword" />
       <itemData name="string" defStyleNum="dsString" />
+      <itemData name="tag" defStyleNum="dsBuiltIn" />
       <itemData name="var" defStyleNum="dsVariable" />
     </itemDatas>
   </highlighting>

@@ -93,6 +93,7 @@ data Exp
   | ExpList [Located Exp]
   | ExpRecord [(Symbol, Located Exp)]
   | ExpParens Exp
+  | ExpTagF Symbol
   | ExpAnnotated (Located Exp) Type
   | ExpDot (Located Exp) (Located Symbol)
   | ExpInsert (Located Symbol) (Located Exp)
@@ -293,10 +294,15 @@ infixExpressions = yields
         initialTiers =
           [ (kwAnd >> pure OpAnd) <|> (kwOr >> pure OpOr)
           , (opP "=" OpEq)
-          , (opP "<" OpLt) <|> (opP ">" OpGt) <|> (opP "<=" OpLtEq) <|> (opP ">=" OpGtEq)
+          , lessThan <|> (opP ">" OpGt) <|> (opP "<=" OpLtEq) <|> (opP ">=" OpGtEq)
           , (opP "+" OpPlus) <|> (opP "-" OpMinus) <|> (opP "||" OpConcat)
           , (opP "*" OpMul) <|> (opP "/" OpDiv)
           ]
+
+        -- Special case for the less-then operator to distinguish it from
+        -- HTML tag functions (e.g. <html>)
+        lessThan =
+          lexeme (try (char '<' >> excluding symbol)) >> return OpLt
     
         opP op t =
           operator op >> pure t
@@ -350,7 +356,7 @@ fields = do
 simpleExpression :: Parsec Exp
 simpleExpression =
   expecting "expression" $
-  parens <|> fn <|> ifExp <|> array <|> record <|> insert <|> delete <|> int <|> var <|> str
+  parens <|> fn <|> tagF <|> ifExp <|> array <|> record <|> insert <|> delete <|> int <|> var <|> str
   
   where
     parens = ExpParens <$> (lParen *> expression <* rParen)
@@ -362,6 +368,7 @@ simpleExpression =
     record = ExpRecord <$> (lCurly *> field `sepBy` comma <* rCurly)
     insert = ExpInsert <$> (kwInsert *> parseLocated symbol) <*> parseLocated simpleExpression
     delete = ExpDelete <$> (kwDelete *> parseLocated symbol) <*> (kwWhere *> parseLocated infixExpressions)
+    tagF = ExpTagF <$> lexeme (try (char '<' *> symbol <* char '>'))
 
     -- FIXME conflicting 'then'
     ifExp = ExpIf <$> (kwIf *> parseLocated typeAnnotation)

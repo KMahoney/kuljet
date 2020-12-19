@@ -60,6 +60,7 @@ data Exp
   | ExpThen (Maybe Symbol) (Located Exp) (Located Exp)
   | ExpList [Located Exp]
   | ExpRecord [(Symbol, Located Exp)]
+  | ExpTagF Symbol
   | ExpAnnotated (Located Exp) Type
   | ExpDot (Located Exp) (Located Symbol)
   | ExpInsert (Located Symbol) (Located Exp)
@@ -344,6 +345,9 @@ infer =
 
         Nothing ->
           locatedFail varSpan ("Unrecognised variable '" <> symbolName var <> "'")
+
+    Norm.ExpTagF sym -> do
+      return (Just (ExpTagF sym, tHtmlTag))
 
     Norm.ExpApp (At fSpan f) arg ->
       infer f >>= \case

@@ -29,32 +29,15 @@ import Kuljet.Value
 import Kuljet.InterpreterType
 
 
-htmlTags :: [Symbol]
-htmlTags =
-  map Symbol
-  [ "body", "html", "head", "link", "nav"
-  , "meta"
-  , "p", "div", "span", "a"
-  , "strong", "em"
-  , "form", "input", "textarea", "label"
-  , "ul", "ol", "li"
-  , "h1", "h2", "h3", "h4", "h5"
-  , "main"
-  ]
-
-
 type EnvValue =
   Reader InterpreterState Value
 
 
 stdEnv :: M.Map Symbol (EnvValue, Type)
 stdEnv =
-  M.fromList (tagEnvList ++ stdEnvList)
+  M.fromList stdEnvList
 
   where
-    tagEnvList =
-      map (\tag -> (tag, (return $ VHtml $ HtmlEmitTag $ symbolName tag, tHtmlTag))) htmlTags
-
     stdEnvList =
       [ (Symbol "redirect", (fn1 fRedirect, tText --> tResponse))
       , (Symbol "file", (fn2 fFile, tText --> tText --> tResponse))

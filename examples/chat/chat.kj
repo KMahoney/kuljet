@@ -3,29 +3,28 @@ table messages { message : text, timestamp : timestamp }
 serve get / =
   let template = fun content ->
     [ docType
-    , html [ head [ link { href = "/style.css", rel = "stylesheet" }
-                  , meta { name = "viewport", content = "width=device-width, intial-scale=1" }
-                  ]
-           , body content
-           ]
+    , <html> [ <head> [ <link> { href = "/style.css", rel = "stylesheet" }
+                      , <meta> { name = "viewport", content = "width=device-width, intial-scale=1" }
+                      ]
+             , <body> content
+             ]
     ]
   in
   let messagesHtml =
     let query = (messages order timestamp desc limit 100) order timestamp asc in
-    div { class = "messages" }
-      (query select { message } -> div { class = "message" } message)
+    <div> { class = "messages" }
+      (query select { message } -> <div> { class = "message" } message)
   in
   let formHtml =
     let formAttrs = { method = "POST", action = "/msg", class = "inputForm" } in
-    let nameInput = input { name = "message", class = "inputMessage", autofocus = "true" } in
-    let submitInput = input { type = "submit" } in
-    form formAttrs [ nameInput, submitInput ]
+    let nameInput = <input> { name = "message", class = "inputMessage", autofocus = "true" } in
+    let submitInput = <input> { type = "submit" } in
+    <form> formAttrs [ nameInput, submitInput ]
   in
   template [ messagesHtml, formHtml ]
 
 let insertMessage =
   fun msg ->
-    getTimestamp as now then
     insert messages { message = msg, timestamp = now }
 
 serve post /msg =

@@ -2,13 +2,6 @@
 title: Standard Library
 ---
 
-## HTML Tags
-
-The following are HTML functions of type `htmlTag`:
-
-`body`, `html`, `head`, `link`, `p`, `div`, `span`, `a`,
-`strong`, `em`, `form`, `input`, `ul`, `ol`, `li`
-
 ## Standard Environment
 
 <section>

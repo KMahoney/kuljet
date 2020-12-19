@@ -61,6 +61,7 @@ data Exp
   | ExpThen (Maybe Symbol) (Located Exp) (Located Exp)
   | ExpList [Located Exp]
   | ExpRecord [(Symbol, Located Exp)]
+  | ExpTagF Symbol
   | ExpDot (Located Exp) (Located Symbol)
   | ExpInsert (Located Symbol) (Located Exp)
   | ExpDelete (Located Symbol) (QB.Expression, QueryArgs)
@@ -138,6 +139,9 @@ compileExp (At eSpan e) =
 
     AST.ExpRecord fields ->
       At eSpan <$> ExpRecord <$> mapM (\(fs, fe) -> (fs,) <$> compileExp fe) fields
+
+    AST.ExpTagF sym ->
+      return $ At eSpan $ ExpTagF sym
 
     AST.ExpDot r fieldName ->
       At eSpan <$> flip ExpDot fieldName <$> compileExp r
@@ -282,6 +286,9 @@ containsField env =
       S.member sym env
 
     AST.ExpLiteral _ ->
+      False
+
+    AST.ExpTagF _ ->
       False
 
     AST.ExpApp (At _ a) (At _ b) ->

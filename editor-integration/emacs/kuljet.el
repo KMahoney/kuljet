@@ -7,6 +7,7 @@
 
 (defconst kuljet--font-lock
   `((,(concat "\\_<" (regexp-opt kuljet--keywords) "\\_>") . font-lock-keyword-face)
+    ("<[a-z0-9]+>" . font-lock-constant-face)
     (,(concat "\\(let\\|table\\|insert\\|delete\\|as\\)\\s-+\\(" lisp-mode-symbol-regexp "\\)") . ((2 font-lock-variable-name-face)))
     ))
 
