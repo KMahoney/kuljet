@@ -15,6 +15,21 @@ data PathSegment
   | PathVar Symbol
   deriving (Show)
 
+
+type PathVars = M.Map Symbol T.Text
+
+
+toText :: Path -> T.Text
+toText (Path []) = "/"
+toText (Path segments) =
+  T.concat (map (("/" <>) . segText) segments)
+
+  where
+    segText = \case
+      PathMatch text -> text
+      PathVar (Symbol sym) -> ":" <> sym
+
+
 pathVars :: Path -> [Symbol]
 pathVars (Path segments) =
   Maybe.mapMaybe symName segments
@@ -24,9 +39,6 @@ pathVars (Path segments) =
       \case
         PathVar sym -> Just sym
         _ -> Nothing
-
-
-type PathVars = M.Map Symbol T.Text
 
 
 matchPath :: Path -> [T.Text] -> Maybe PathVars

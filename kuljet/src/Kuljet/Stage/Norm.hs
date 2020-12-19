@@ -16,8 +16,6 @@ module Kuljet.Stage.Norm
   ) where
 
 
-import qualified Data.Text as T
-import Data.List (intercalate)
 import RangedParsec.Pos (Located(..))
 import Network.HTTP.Types.Method (Method)
 
@@ -70,62 +68,7 @@ data Exp
   | ExpQNatJoin (Located Exp) (Located Exp)
   | ExpBinOp AST.BinOp (Located Exp) (Located Exp)
   | ExpIf (Located Exp) (Located Exp) (Located Exp)
-
-instance Show Exp where
-  show =
-    \case
-      ExpVar (At _ sym) -> T.unpack (symbolName sym)
-      ExpLiteral (AST.LitStr s) -> "\"" ++ T.unpack s ++ "\""
-      ExpLiteral (AST.LitInt i) -> show i
-      ExpApp (At _ a) (At _ b) -> "(" ++ show a ++ " " ++ show b ++ ")"
-      ExpAbs sym (At _ a) -> "(fun " ++ T.unpack (annotatedSym sym) ++ " -> " ++ show a ++ ")"
-      ExpThen sym (At _ a) (At _ b) -> show a ++ maybe "" ((" as " ++) . unpackSym) sym ++ " then " ++ show b
-      ExpList elems -> "[" ++ intercalate "," (map show elems) ++ "]"
-      ExpRecord fields -> "{" ++ intercalate "," (map (\(sym, e) -> unpackSym sym ++ " = " ++ show e) fields) ++ "}"
-      ExpTagF sym -> "<" <> unpackSym sym <> ">"
-      ExpAnnotated e t -> "(" ++ show e ++ " : " ++ T.unpack (typeName t) ++ ")"
-      ExpDot (At _ a) (At _ b) -> show a ++ "." ++ show b
-      ExpInsert (At _ sym) (At _ value) -> "(insert " <> unpackSym sym <> " " <> show value <> ")"
-      ExpDelete (At _ sym) (At _ value) -> "(delete " <> unpackSym sym <> " where " <> show value <> ")"
-      ExpYield (At _ a) (At _ b) -> "(" ++ show a ++ " -> " ++ show b ++ ")"
-      ExpQLimit (At _ a) (At _ b) -> "(" ++ show a ++ " limit " ++ show b ++ ")"
-      ExpQOrder (At _ a) (At _ b) ord -> "(" ++ show a ++ " order " ++ show b ++ " " ++ showOrd ord ++ ")"
-      ExpQSelect (At _ a) (At _ b) -> "(" ++ show a ++ " select " ++ show b ++ ")"
-      ExpQWhere (At _ a) (At _ b) -> "(" ++ show a ++ " where " ++ show b ++ ")"
-      ExpQNatJoin (At _ a) (At _ b) -> "(" ++ show a ++ " natJoin " ++ show b ++ ")"
-      ExpBinOp op (At _ a) (At _ b) -> "(" ++ show a ++ " " ++ showOp op ++ " " ++ show b ++ ")"
-      ExpIf (At _ a) (At _ b) (At _ c) -> "(if " ++ show a ++ " then " ++ show b ++ " else " ++ show c ++ ")"
-
-    where
-      unpackSym =
-        T.unpack . symbolName
-        
-      annotatedSym =
-        \case
-          Annotated {discardAnnotation = sym, annotation = Nothing} ->
-            symbolName sym
-          Annotated {discardAnnotation = sym, annotation = Just t} ->
-            symbolName sym <> " : " <> typeName t
-
-      showOrd =
-        \case
-          AST.OrderAscending -> "asc"
-          AST.OrderDescending -> "desc"
-
-      showOp =
-        \case
-          AST.OpEq -> "="
-          AST.OpPlus -> "+"
-          AST.OpMinus -> "-"
-          AST.OpMul -> "*"
-          AST.OpDiv -> "/"
-          AST.OpLt -> "<"
-          AST.OpGt -> ">"
-          AST.OpLtEq -> "<="
-          AST.OpGtEq -> ">="
-          AST.OpAnd -> "and"
-          AST.OpOr -> "or"
-          AST.OpConcat -> "||"
+  deriving (Show)
 
 
 normalise :: AST.Module -> Module

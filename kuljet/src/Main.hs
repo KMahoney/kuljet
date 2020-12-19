@@ -24,6 +24,7 @@ import qualified Kuljet.SourceError as SourceError
 import qualified Kuljet.PathPattern as PathPattern
 import qualified Kuljet.Env as Env
 import qualified Kuljet.AutoDb as AutoDb
+import qualified Kuljet.Format as Format
 
 import qualified Database.SQLite3 as DB
 
@@ -143,6 +144,17 @@ dev opts = do
   serve (opts { serveReload = True, serveDebug = True })
 
 
+format :: String -> IO ()
+format filename = do
+  source <- T.readFile filename -- FIXME: Utf8
+  case AST.parseModule (T.pack filename) source of
+    Left _ ->
+      putStrLn (T.unpack source)
+      
+    Right parsedMod ->
+      putStrLn $ T.unpack $ Format.asText $ Format.format parsedMod
+
+
 check :: String -> IO ()
 check filename = do
   _ <- loadFile filename
@@ -160,6 +172,7 @@ optionParser = info (parser <**> helper) infoMod
     commands =
       command "dev" (info (dev <$> serveOptions 4) (progDesc "Alias for 'serve --debug --reload'")) <>
       command "serve" (info (serve <$> serveOptions 30) (progDesc "Start server")) <>
+      command "format" (info (format <$> filename) (progDesc "Format source code")) <>
       command "check" (info (check <$> filename) (progDesc "Check for errors"))
 
     filename =
