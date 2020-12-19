@@ -21,6 +21,7 @@ import qualified Data.ByteString.Base64 as Base64
 import qualified Crypto.KDF.BCrypt as Password
 import qualified Text.Regex.PCRE as RE
 import Text.Regex.PCRE.Text()
+import qualified CMark
 
 import Kuljet.Symbol
 import Kuljet.Type
@@ -76,6 +77,7 @@ stdEnv =
       , (Symbol "true", (return (VBool True), tBool))
       , (Symbol "false", (return (VBool False), tBool))
       , (Symbol "not", (fn1 fNot, tBool --> tBool))
+      , (Symbol "commonMark", (fn1 fCommonMark, tText --> tHtml))
       ]
 
     infixr -->
@@ -268,3 +270,8 @@ fRegexpMatch regexpValue textValue = do
 fNot :: Value -> Interpreter Value
 fNot boolValue =
   return $ VBool $ not $ valueAsBool boolValue
+
+
+fCommonMark :: Value -> Interpreter Value
+fCommonMark textValue =
+  return $ VHtml $ HtmlEmitStr $ CMark.commonmarkToHtml [CMark.optSafe, CMark.optSmart] $ valueAsText textValue

@@ -53,3 +53,4 @@ executables:
     - base64
     - cryptonite
     - regex-pcre-builtin
+    - cmark

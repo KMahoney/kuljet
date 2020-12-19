@@ -120,6 +120,14 @@ regexpMatch : text -> text -> bool
 `regexpMatch regexp text` tests `text` against `regexp`.
 </section>
 
+<section>
+```
+commonMark : text -> html
+```
+
+Parse text as 'common mark'.
+</section>
+
 ### IO Actions
 
 <section>
