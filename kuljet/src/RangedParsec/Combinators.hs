@@ -122,7 +122,8 @@ try :: Parsec a -> Parsec a
 try (Parsec p) =
   Parsec $ \s ->
   case p s of
-    Consumed x -> Empty x
+    Consumed (Error ex _) -> Empty (Error ex s)
+    Consumed x -> Consumed x
     x -> x
 
 
