@@ -1,0 +1,257 @@
+---
+Basic user/session tables and helpers for handling users.
+---
+
+table users { user_id: text, username: text, password: password }
+table sessions { session_id: text, user_id: text }
+
+let user =
+  let lookupSession =
+    fun sessionId ->
+      let query =
+        sessions natJoin users
+                 where session_id = sessionId
+                 select { user_id, username }
+      in listHead (query -> { user_id, username })
+  in
+  bindMaybe (cookie "forumSessionId") lookupSession
+
+let showWhenLoggedIn =
+  fun content ->
+    maybe user emptyHtml (fun _ -> content)
+
+
+---
+The HTML template for forum pages.
+---
+
+let template =
+  let newUserLinks =
+    [ <li> (<a> { href = "/users/new" } "Create User")
+    , <li> (<a> { href = "/sessions/new" } "Log in")
+    ] : html
+  in
+  let userLinks =
+    fun user ->
+      let logOutForm =
+        <form> { method = "POST", action = "/sessions/delete" }
+          [ <input> { type = "submit", value = ("Log Out (" || user.username || ")") } ]
+      in
+      <li> logOutForm
+  in
+  let siteNav =
+    let navLinks =
+      [ <li> (<a> { href = "/" } "Home")
+      , maybe user newUserLinks userLinks
+      ]
+    in
+    <nav> (<ul> navLinks)
+  in
+  fun content ->
+    [ docType
+    , <html> [ <head> [ <link> { href = "/style.css", rel = "stylesheet" }
+                      , <meta> { name = "viewport", content = "width=device-width, intial-scale=1" }
+                      ]
+           , <body> [ siteNav, <main> content ]
+           ]
+    ]
+
+let permissionDenied =
+  "permission denied!" : response
+
+
+---
+Tables for forum posts.
+---
+
+table topics { topic_id: text, user_id: text, title: text, created: timestamp }
+table posts { topic_id: text, post_id: text, user_id : text, body: text, created: timestamp }
+
+
+---
+The index shows a list of forum topics.
+---
+
+serve get / =
+  template [ showWhenLoggedIn (<a> { href = "/topics/new" } "Create new topic")
+           , <h1> "Latest Topics"
+           , <ul> { class = "topics" }
+               (topics natJoin users order created desc select { topic_id, title, username, created } ->
+                 <li> [ <a> {href = "/topics/" || topic_id} title
+                    , <span> { class = "author" } (" by " || username || " ")
+                    , <span> { class = "timestamp" } ("(" || relativeTime created || ")")
+                    ])
+           ]
+
+
+---
+Creating a new topic.
+---
+
+serve get /topics/new =
+  template
+    [ <h1> "Create New Topic"
+    , <form> { method = "POST", action = "/topics/" }
+      [ <input> { name = "title", placeholder = "Title", required = "true", autofocus = "true" }
+      , <textarea> { name = "body", placeholder = "Body", required = "true" }
+      , <input> { type = "submit", value = "Create Topic" }
+      ]
+    ]
+
+serve post /topics/ =
+  fun postData : { title : text, body : text } ->
+    let insertTopic =
+      fun user ->
+        genUUID as topic_id then
+        genUUID as post_id then
+        insert topics { topic_id, user_id = user.user_id, title = postData.title, created = now } then
+        insert posts { topic_id, post_id, user_id = user.user_id, body = postData.body, created = now } then
+        redirect "/"
+    in
+    maybe user (liftIO permissionDenied) insertTopic
+
+
+---
+Displaying a topic and creating new posts.
+---
+
+serve get /topics/:id =
+  template [ <h1> (topics where topic_id = id -> title)
+           , <ul> { class = "posts" }
+               (posts natJoin users where topic_id = id ->
+                 <li> [ <span> { class = "content" } (commonMark body)
+                      , <footer> [ <span> { class = "author" } (" by " || username || " ")
+                                 , <span> { class = "timestamp" } ("(" || relativeTime created || ")")
+                                 ]
+                    ])
+           , showWhenLoggedIn
+               (<form> { method = "POST", action = "/posts/", class = "mt-2" }
+                  [ <textarea> { name = "body", required = "true" }
+                  , <input> { name = "topic_id", type = "hidden", value = id }
+                  , <div> { class = "small mb-1" } [ <a> { href = "https://commonmark.org/help" } "CommonMark", " formatting accepted." ]
+                  , <input> { type = "submit", value = "Create Post" }
+                  ])
+           ]
+
+serve post /posts/ =
+  fun postData : { topic_id : text, body : text } ->
+    let insertPost =
+      fun user ->
+        genUUID as post_id then
+        insert posts { topic_id = postData.topic_id, post_id, user_id = user.user_id, body = postData.body, created = now } then
+        redirect ("/topics/" || postData.topic_id)
+    in
+    maybe user (liftIO permissionDenied) insertPost
+    
+
+---
+User handling.
+---
+
+let createUserForm =
+  <form> { method = "POST", action = "/users/" }
+    [ <input> { name = "username"
+              , placeholder = "Username"
+              , title = "ASCII characters (A-Z, a-z, 0-9) only - no spaces"
+              , pattern = "^[a-zA-Z0-9]+$"
+              , required = "true"
+              , autofocus = "true"
+              }
+    , <input> { name = "password", placeholder = "Password", type = "password", required = "true" }
+    , <input> { type = "submit", value = "Create User" }
+    ]
+
+serve get /users/new =
+  template createUserForm
+
+---
+User creation includes validation checks:
+
+- Username is a reasonable length
+- Username has not already been taken
+---
+
+serve post /users/ =
+  fun postData : { username : text, password : text } ->
+    let userExists =
+      maybe (listHead (users where username = postData.username -> 1)) false (fun _ -> true)
+    in
+    let validUsername =
+      regexpMatch "^[a-zA-Z0-9]+$" postData.username and
+      textLength postData.username < 15
+    in
+    let validUser =
+      validUsername and
+      textLength postData.password > 0 and
+      not userExists
+    in
+    let createUser =
+      genUUID as user_id then
+      insert users { user_id, username = postData.username, password = hashPassword postData.password } then
+      genUUID as session_id then
+      insert sessions { session_id, user_id } then
+      addCookie (redirect "/") "forumSessionId" session_id
+    in
+    if validUser
+      then createUser
+      else
+        let errors =
+          if userExists
+          then <p> "User Already Exists"
+          else if not validUsername
+          then <p> "Invalid username"
+          else emptyHtml
+        in
+        liftIO (template [ errors, createUserForm ] : response)
+
+
+
+---
+Session handling.
+---
+
+let loginForm =
+  <form> { method = "POST", action = "/sessions/" }
+     [ <input> { name = "username", placeholder = "Username", required = "true", autofocus = "true" }
+     , <input> { name = "password", placeholder = "Password", type = "password", required = "true" }
+     , <input> { type = "submit", value = "Log in" }
+     ]
+
+serve get /sessions/new =
+  template loginForm
+  
+serve post /sessions/ =
+  fun postData : { username : text, password : text } ->
+    let userCreds =
+      listHead (users where username = postData.username
+                      select { user_id, password } -> { user_id, password })
+    in
+    let badLogin =
+      template [<div> "Login failed!", loginForm] : response
+    in
+    let createSession =
+      fun user_id ->
+        randomBytes 20 as session_id then
+        insert sessions { session_id, user_id } then
+        addCookie (redirect "/") "forumSessionId" session_id
+    in
+    let login =
+      fun creds ->
+        if validatePassword postData.password creds.password
+        then createSession creds.user_id
+        else liftIO badLogin
+    in
+    maybe userCreds (liftIO badLogin) login
+
+serve post /sessions/delete =
+  maybe user
+    (liftIO (redirect "/"))
+    (fun user -> delete sessions where user_id = user.user_id then redirect "/")
+
+
+---
+Style for forums.
+---
+
+serve get /style.css =
+  file "text/css" "style.css"

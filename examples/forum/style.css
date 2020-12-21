@@ -1,0 +1,113 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","Liberation Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";
+    line-height: 1.6;
+}
+
+main {
+    padding: 1rem;
+}
+
+h1 {
+    font-size: 1.6rem;
+    margin: 1rem 0 0.5rem 0;
+}
+
+ul.topics {
+    list-style: none;
+}
+
+.topics .author, .topics .timestamp {
+    font-size: 0.8rem;
+}
+
+ul.posts {
+    list-style: none;
+}
+
+.posts > li {
+    background: #F8F8F8;
+    padding: 1rem;
+    max-width: 60rem;
+    width: 100%;
+}
+
+.posts > li:nth-child(odd) {
+    background: #F2F2F2;
+}
+
+.posts .content ul {
+    margin-left: 2rem;
+}
+
+.posts .content {
+    display: block;
+}
+
+.posts footer {
+    display: block;
+}
+
+.posts .author, .posts .timestamp {
+    font-size: 0.8rem;
+}
+
+/* utils */
+
+.mt-1 { margin-top: 1rem; }
+.mt-2 { margin-top: 2rem; }
+
+.mb-1 { margin-bottom: 1rem; }
+.mb-2 { margin-bottom: 2rem; }
+
+.small { font-size: 0.8rem; }
+
+/* nav */
+
+nav ul {
+    background: black;
+    display: flex;
+    list-style: none;
+}
+
+nav li {
+    padding: 0.5rem 1rem;
+    color: #CCC;
+}
+
+nav a, nav input[type=submit] {
+    text-decoration: none;
+    background: none;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+    font-weight: bold;
+    line-height: 1.6;
+    display: block;
+}
+
+
+/* forms */
+
+main form input, main form textarea {
+    display: block;
+    margin-bottom: 1rem;
+    width: 100%;
+    max-width: 30rem;
+    padding: 0.5rem;
+}
+
+main form textarea {
+    height: 10rem;
+}
+
+main form input[type=submit] {
+    width: 10rem;
+    padding: 0.5rem;
+}

@@ -116,8 +116,13 @@ main = do
                             , exName = "A Simple Chat Server"
                             , exRunning = "https://chat.kuljet.com"
                             }
+      forumExample = Example { exUrl = "forum"
+                             , exSrc = exampleDir <> "/forum/forum.kj"
+                             , exName = "A Forum"
+                             , exRunning = "https://forum.kuljet.com"
+                             }
     in
-      mapM (parseExample syntax) [ chatExample ]
+      mapM (parseExample syntax) [ chatExample, forumExample ]
     
   docs <- Docs rootDocs exampleDocs
             <$> parseDir syntax srcDir "/guides/"
