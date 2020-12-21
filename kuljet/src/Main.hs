@@ -35,6 +35,7 @@ data ServeOptions
                  , serveReload :: Bool
                  , serveDebug :: Bool
                  , serveDbPath :: Maybe String
+                 , servePort :: Int
                  }
 
 
@@ -71,13 +72,13 @@ data ReloadState =
 
 runInterpreter :: ServeOptions -> [TypeCheck.Table] -> [Interpret.InterpretedRoute] -> IO ()
 runInterpreter opts initialTables initialRoutes = do
-  putStrLn "Running server on localhost:4000"
+  putStrLn $ "Running server on localhost:" <> show (servePort opts)
   if serveReload opts
     then do
       reloadStateRef <- (ReloadState initialRoutes initialTables <$> queryModTime) >>= IORef.newIORef
-      Warp.run 4000 (reloadApp reloadStateRef)
+      Warp.run (servePort opts) (reloadApp reloadStateRef)
     else
-      Warp.run 4000 (app initialTables initialRoutes)
+      Warp.run (servePort opts) (app initialTables initialRoutes)
 
   where
     filename =
@@ -183,7 +184,8 @@ optionParser = info (parser <**> helper) infoMod
       filename <*>
       switch (long "reload") <*>
       switch (long "debug") <*>
-      optional (strOption (metavar "DB" <> long "db"))
+      optional (strOption (metavar "DB" <> long "db")) <*>
+      option auto (metavar "PORT" <> long "port" <> value 4000)
 
     infoMod :: InfoMod (IO ())
     infoMod =
