@@ -172,7 +172,7 @@ optionParser = info (parser <**> helper) infoMod
     commands :: Mod CommandFields (IO ())
     commands =
       command "dev" (info (dev <$> serveOptions 4) (progDesc "Alias for 'serve --debug --reload'")) <>
-      command "serve" (info (serve <$> serveOptions 30) (progDesc "Start server")) <>
+      command "serve" (info (serve <$> serveOptions 12) (progDesc "Start server")) <>
       command "format" (info (format <$> filename) (progDesc "Format source code")) <>
       command "check" (info (check <$> filename) (progDesc "Check for errors"))
 
