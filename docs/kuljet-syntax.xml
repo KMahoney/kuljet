@@ -33,6 +33,10 @@
         <keyword attribute="keyword" context="var" String="varKeywords" />
         <DetectChar attribute="string" context="string" char="&quot;" />
         <RegExpr attribute="tag" context="#stay" String="&lt;[a-z]+&gt;" />
+        <RegExpr attribute="comment" context="comment" String="^---$" />
+      </context>
+      <context attribute="comment" lineEndContext="#stay" name="comment" >
+        <RegExpr attribute="comment" context="#pop" String="^---$" />
       </context>
       <context attribute="string" lineEndContext="#stay" name="string" >
         <DetectChar attribute="string" context="#pop" char="&quot;" />
@@ -43,6 +47,7 @@
     </contexts>
     <itemDatas>
       <itemData name="normal" defStyleNum="dsNormal" />
+      <itemData name="comment" defStyleNum="dsComment" />
       <itemData name="keyword" defStyleNum="dsKeyword" />
       <itemData name="string" defStyleNum="dsString" />
       <itemData name="tag" defStyleNum="dsBuiltIn" />

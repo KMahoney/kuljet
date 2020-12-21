@@ -15,7 +15,9 @@
 (define-derived-mode kuljet-mode prog-mode "Kuljet"
   "Major mode for editing Kuljet files"
   (setq-local compile-command "kuljet check")
-  (setq font-lock-defaults '(kuljet--font-lock)))
+  (setq-local font-lock-defaults '(kuljet--font-lock))
+  (setq-local syntax-propertize-function
+              (syntax-propertize-rules ("^---$" (0 "!")))))
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist (cons (purecopy "\\.kj\\'") 'kuljet-mode))

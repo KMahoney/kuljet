@@ -18,6 +18,7 @@ module Kuljet.Stage.AST
 
 import qualified Data.Text as T
 import qualified Data.Maybe as Maybe
+import qualified Data.Set as S
 
 import Network.HTTP.Types.Method (Method)
 import Control.Applicative
@@ -65,6 +66,7 @@ data Decl
   = EndpointDecl Endpoint
   | TableDecl Table
   | LetDecl Symbol Exp
+  | CommentBlock T.Text
   deriving (Show)
 
 
@@ -155,7 +157,7 @@ kuljetModule =
 decl :: Parsec Decl
 decl =
   expecting "'serve' or 'table' declaration" $
-  (EndpointDecl <$> serve) <|> (TableDecl <$> table) <|> topLet
+  (EndpointDecl <$> serve) <|> (TableDecl <$> table) <|> topLet <|> commentBlock
 
   where
     serve =
@@ -166,6 +168,28 @@ decl =
 
     topLet =
       LetDecl <$> (kwLet *> symbol) <*> (opEq *> expression)
+
+    commentBlock =
+      CommentBlock <$> (comment <* skipSpace)
+
+
+comment :: Parsec T.Text
+comment =
+  expecting "comment block" $
+  Parsec $ \s@(ParseState { psInput, psPos = (line, col) }) ->
+  if col == 1 && T.isPrefixOf "---\n" psInput then
+    Consumed (loop T.empty (consume s (T.drop 4 psInput) (line + 1, 1)))
+  else
+    Empty (Error S.empty s)
+
+  where
+    loop :: T.Text -> ParseState -> Reply T.Text
+    loop acc s@(ParseState { psInput, psPos = (line, _) }) =
+      if T.null psInput
+      then Ok acc S.empty s
+      else case T.break (=='\n') psInput of
+        ("---", remaining) -> Ok acc S.empty (consume s (T.drop 1 remaining) (line + 1, 1))
+        (cLine, remaining) -> loop (acc <> cLine <> "\n") (consume s (T.drop 1 remaining) (line + 1, 1))
 
 
 method :: Parsec Method.Method

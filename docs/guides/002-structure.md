@@ -77,3 +77,18 @@ can be defined as a function taking form-encoded inputs.
 
 Most types can be inferred, but the type of the `postVars` argument
 will need to be specified here.
+
+
+## Comment Blocks
+
+Comment blocks start and end with `---`, like this:
+
+```kuljet
+---
+This is a comment
+---
+```
+
+Note that, unlike most other languages, this cannot be placed anywhere
+in the source code. A comment must be in-between other top level
+declarations.

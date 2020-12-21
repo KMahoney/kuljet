@@ -110,6 +110,9 @@ formatDecl = \case
     keyword "let" <+> symbol sym <+> "=" <> line <>
     indent (formatExp e)
 
+  CommentBlock comment ->
+    part (PSpan ("---" <> comment <> "---")) <> line
+
   where
     formatPath =
       part . PSpan . Path.toText
