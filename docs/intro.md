@@ -23,6 +23,15 @@ Features:
 serve get / = "Hello World!"
 ```
 
+## Database/HTML Example
+
+```kuljet
+table notes { note: text }
+
+serve get / =
+  <html> (<ul> (notes -> <li> note))
+```
+
 ## Current State
 
 *Kuljet* is still a work in progress. Expect it to change
@@ -37,7 +46,7 @@ put towards this goal yet. Favourable benchmarks are coincidental.
 
 ## What Next?
 
-Take a look at **the examples** such as [A Simple Chat Server](/examples/chat/).
+Take a look at **more examples** such as [A Simple Chat Server](/examples/chat/).
 
 If you'd like to start writing Kuljet, read the [installation instructions](/install/) and
 start looking through [the guides](/guides/expressions/).
