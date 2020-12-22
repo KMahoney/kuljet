@@ -16,6 +16,7 @@ Features:
 * Type-checked relational operators (projection, selection, joins, etc.)
 * Tasty curry flavoured functions.
 
+
 ## Hello World
 
 ```kuljet
@@ -29,6 +30,9 @@ dramatically.
 
 It can be used for very simple HTML apps, but there will likely be a
 lot of missing functionality and bugs.
+
+Kuljet has a high potential for performance, but no effort has been
+put towards this goal yet. Favourable benchmarks are coincidental.
 
 
 ## What Next?
