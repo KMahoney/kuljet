@@ -23,8 +23,8 @@ Construct a 302 redirect response to the given path.
 file : text -> text -> response
 ```
 
-`file <contentType> <path>`
-constructs a response that serves `<path>` with the given `<contentType>`.
+`file contentType path`
+constructs a response that serves `path` with the given `contentType`.
 </section>
 
 <section>

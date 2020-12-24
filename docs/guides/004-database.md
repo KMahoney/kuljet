@@ -21,7 +21,7 @@ For example,
 ```kuljet
 table ints { i: int }
 
-serve get / = ul (ints -> li i)
+serve get / = <ul> (ints -> <li> i)
 ```
 
 If table `ints` contained values 1 to 3, the output would be:

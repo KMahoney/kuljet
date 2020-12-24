@@ -64,11 +64,11 @@ e.g.
 
 ```kuljet
 serve get /:name =
-  p ["Hello ", name]
+  <p> ["Hello ", name]
 
 serve post /form =
   fun postVars: { name: text } ->
-    p ["Hello ", postVars.name]
+    <p> ["Hello ", postVars.name]
 ```
 
 Those paying attention will have noticed that paths can
