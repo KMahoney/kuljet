@@ -459,6 +459,16 @@ infer =
             Norm.OpOr -> (PredExact tBool, tBool)
             Norm.OpConcat -> (PredExact tText, tText)
 
+    Norm.ExpYield queryExp (At yieldSpan yielder) -> do
+      (queryExp', queryType) <- typeCheck PredQuery queryExp
+      case queryType of
+        TCons "query" [TRecord fields] -> do
+          yielder' <- withTypeEnv (\env -> M.union env (M.fromList fields)) (infer yielder)
+          return $ fmap (\(yielderExp, yieldT) -> (ExpYield queryExp' (At yieldSpan yielderExp) (M.fromList fields), tList yieldT)) yielder'
+
+        _ ->
+          locatedFail (locatedSpan queryExp) "Expecting a query"
+
     Norm.ExpInsert locTable@(At tableSpan tableName) value ->
       lookupTable tableName >>= \case
       Just table -> do
