@@ -270,6 +270,9 @@ typeCheck p (At eSpan e) = do
   where
     isHtml t =
       t `elem` [tHtmlTag, tHtmlTagWithAttrs, tHtml, tText, tInt]
+      || case t of
+           TCons "list" [t'] -> isHtml t'
+           _ -> False
 
     isStrictHtmlPred =
       p `elem` [PredExact tHtml, PredExact tHtmlTagArg]
