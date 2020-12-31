@@ -68,6 +68,10 @@ tResponse :: Type
 tResponse = TCons "response" []
 
 
+tJsonResponse :: Type -> Type
+tJsonResponse t = TCons "jsonResponse" [t]
+
+
 tIO :: Type -> Type
 tIO t = TCons "io" [t]
 

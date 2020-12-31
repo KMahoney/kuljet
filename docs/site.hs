@@ -20,7 +20,7 @@ data Example
   = Example { exUrl :: String
             , exSrc :: String
             , exName :: String
-            , exRunning :: String
+            , exRunning :: Maybe String
             }
   deriving (Show)
 
@@ -92,10 +92,14 @@ parseExample syntax (Example { exSrc, exUrl, exName, exRunning }) = do
 
     examplePage :: T.Text -> Html ()
     examplePage srcHtml = do
+      maybe mempty runningOn exRunning
+      toHtmlRaw srcHtml
+
+    runningOn :: String -> Html ()
+    runningOn url = do
       p_ $ do
         "Running on "
-        a_ [ href_ (T.pack exRunning) ] (toHtml exRunning)
-      toHtmlRaw srcHtml
+        a_ [ href_ (T.pack url) ] (toHtml url)
 
 
 main :: IO ()
@@ -114,15 +118,20 @@ main = do
       chatExample = Example { exUrl = "chat"
                             , exSrc = exampleDir <> "/chat/chat.kj"
                             , exName = "A Simple Chat Server"
-                            , exRunning = "https://chat.kuljet.com"
+                            , exRunning = Just "https://chat.kuljet.com"
                             }
       forumExample = Example { exUrl = "forum"
                              , exSrc = exampleDir <> "/forum/forum.kj"
                              , exName = "A Forum"
-                             , exRunning = "https://forum.kuljet.com"
+                             , exRunning = Just "https://forum.kuljet.com"
                              }
+      jsonExample = Example { exUrl = "simplejson"
+                            , exSrc = exampleDir <> "/simplejson/simplejson.kj"
+                            , exName = "A Simple JSON API"
+                            , exRunning = Nothing
+                            }
     in
-      mapM (parseExample syntax) [ chatExample, forumExample ]
+      mapM (parseExample syntax) [ chatExample, forumExample, jsonExample ]
     
   docs <- Docs rootDocs exampleDocs
             <$> parseDir syntax srcDir "/guides/"

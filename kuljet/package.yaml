@@ -54,3 +54,6 @@ executables:
     - cryptonite
     - regex-pcre-builtin
     - cmark
+    - aeson
+    - unordered-containers
+    - vector

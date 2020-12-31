@@ -1,0 +1,22 @@
+---
+An extremely simple JSON API:
+
+curl http://localhost:4000
+{"allThings":[]}
+
+curl http://localhost:4000 -X POST -d "name=blah"
+{"createdThing":{"name":"blah"}}
+
+curl http://localhost:4000
+{"allThings":[{"name":"blah"}]}
+---
+
+table things { name : text }
+
+serve get / =
+  json { allThings = things -> { name } }
+
+serve post / =
+  fun thing : { name : text } ->
+      insert things thing then
+      json { createdThing = thing }

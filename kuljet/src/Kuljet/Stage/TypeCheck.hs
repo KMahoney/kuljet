@@ -287,13 +287,32 @@ typeCheck p (At eSpan e) = do
 
     isPostFun =
       \case
-        TCons "->" [TRecord fields, ret] -> all ((tText ==) . snd) fields && isResponseSubtype ret
+        TCons "->" [TRecord fields, ret] -> all ((tText ==) . snd) fields && optionalIO isResponseSubtype ret
         _ -> False
 
     isResponseSubtype =
       \case
-        TCons "io" [t] -> t == tResponse || isHtml t
+        TCons "jsonResponse" [t] -> isJson t
         t -> t == tResponse || isHtml t
+
+    isJson t =
+      isJson' t
+      || case t of
+           TCons "maybe" [t'] -> isJson' t'
+           _ -> False
+      
+      where isJson' t' =
+              t' `elem` [tText, tInt, tBool]
+              || case t of
+                   TCons "list" [t''] -> isJson t''
+                   TRecord fields -> all (isJson . snd) fields
+                   _ -> False
+
+
+    optionalIO f =
+      \case
+        TCons "io" [t] -> f t
+        t -> f t
 
     isQuery =
       \case
@@ -309,10 +328,10 @@ typeCheck p (At eSpan e) = do
       case p of
         PredExact (TCons "html" []) -> isHtml t
         PredExact (TCons "htmlTagArg" []) -> isHtml t || isAttributes t
-        PredExact (TCons "response" []) -> isHtml t || t == tResponse
+        PredExact (TCons "response" []) -> isResponseSubtype t
         PredExact t' -> Maybe.isJust (matchType t' t)
-        PredPostResponse -> isPostFun t || isResponseSubtype t
-        PredResponse -> isResponseSubtype t
+        PredPostResponse -> optionalIO isPostFun t || optionalIO isResponseSubtype t
+        PredResponse -> optionalIO isResponseSubtype t
         PredQuery -> isQuery t
         PredOrd -> t `elem` [tInt, tText, tTimestamp, tBool]
         PredProject -> isProject t

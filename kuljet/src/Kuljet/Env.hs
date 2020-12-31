@@ -4,6 +4,9 @@ import qualified System.IO.Error as IO
 import qualified Data.Map as M
 import qualified Data.List as List
 import qualified Data.Maybe as Maybe
+import qualified Data.Aeson as JSON
+import qualified Data.HashMap.Strict as HashMap
+import qualified Data.Vector as Vector
 import qualified Network.Wai as Wai
 import qualified Network.HTTP.Types.Status as HTTP
 import qualified Network.HTTP.Types.Header as HTTP
@@ -61,6 +64,7 @@ stdEnv =
       , (Symbol "false", (return (VBool False), tBool))
       , (Symbol "not", (fn1 fNot, tBool --> tBool))
       , (Symbol "commonMark", (fn1 fCommonMark, tText --> tHtml))
+      , (Symbol "json", (fn1 fJson, v0 --> tJsonResponse v0))
       ]
 
     infixr -->
@@ -77,6 +81,28 @@ stdEnv =
 
     fn3 :: (Value -> Value -> Value -> Interpreter Value) -> EnvValue
     fn3 f = return $ VFn (\arg1 -> return (VFn (\arg2 -> return (VFn (\arg3 -> f arg1 arg2 arg3)))))
+
+
+fJson :: Value -> Interpreter Value
+fJson value =
+  return $ VResponse $ Response { responseStatus = HTTP.ok200
+                                , responseHeaders = [(HTTP.hContentType, "application/json")]
+                                , responseBody = JSON.encode (toJson value)
+                                }
+
+  where
+    toJson =
+      \case
+        VText text -> JSON.String text
+        VInt i -> JSON.Number (fromInteger i)
+        VBool b -> JSON.Bool b
+        VRecord record -> JSON.Object $ HashMap.fromList $ map (\(k, v) -> (symbolName k, toJson v)) $ M.toList record
+        VList values -> JSON.Array $ Vector.fromList $ map toJson values
+        VMaybe maybeValue ->
+          case maybeValue of
+            Just value' -> toJson value'
+            Nothing -> JSON.Null
+        _ -> undefined
 
 
 fRedirect :: Value -> Interpreter Value

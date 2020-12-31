@@ -12,23 +12,6 @@ The time the current request was made.
 
 <section>
 ```
-redirect : text -> response
-```
-
-Construct a 302 redirect response to the given path.
-</section>
-
-<section>
-```
-file : text -> text -> response
-```
-
-`file contentType path`
-constructs a response that serves `path` with the given `contentType`.
-</section>
-
-<section>
-```
 emptyHtml : html
 ```
 
@@ -143,6 +126,34 @@ randomBytes : int -> io text
 ```
 
 Generates N random bytes, base64 encoded. This is useful for generating session keys.
+</section>
+
+## Responses
+
+<section>
+```
+redirect : text -> response
+```
+
+Construct a 302 redirect response to the given path.
+</section>
+
+<section>
+```
+file : text -> text -> response
+```
+
+`file contentType path`
+constructs a response that serves `path` with the given `contentType`.
+</section>
+
+<section>
+```
+json : 'a -> jsonResponse 'a
+```
+
+Constructs a JSON response with content type `application/json`.
+The type variable `'a` must be valid JSON - `text`, `int`, `bool`, or lists or records of JSON.
 </section>
 
 ## Passwords
