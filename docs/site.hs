@@ -7,6 +7,7 @@ import qualified Skylighting as Sky
 import qualified Text.Blaze.Html.Renderer.Text as Blaze
 import qualified Data.Map as M
 import qualified Data.List as L
+import qualified Data.Either as Either
 import System.Directory
 import qualified Text.Pandoc as Pan
 import qualified Text.Pandoc.Shared as Pan
@@ -20,7 +21,6 @@ data Example
   = Example { exUrl :: String
             , exSrc :: String
             , exName :: String
-            , exRunning :: Maybe String
             }
   deriving (Show)
 
@@ -80,10 +80,10 @@ parseDir syntax base dir = do
 
 
 parseExample :: Sky.Syntax -> Example -> IO Doc
-parseExample syntax (Example { exSrc, exUrl, exName, exRunning }) = do
+parseExample syntax (Example { exSrc, exUrl, exName }) = do
   source <- T.readFile exSrc
-  let Right tokens = Sky.tokenize (Sky.TokenizerConfig (syntaxMap syntax) False) syntax source
-      srcHtml = LT.toStrict $ Blaze.renderHtml $ Sky.formatHtmlBlock formatOpts tokens
+  let tokens = Sky.tokenize (Sky.TokenizerConfig (syntaxMap syntax) False) syntax source
+      srcHtml = LT.toStrict $ Blaze.renderHtml $ Sky.formatHtmlBlock formatOpts (Either.fromRight undefined tokens)
       pageHtml = LT.toStrict $ renderText $ examplePage srcHtml
   return $ Doc ("/examples/" <> exUrl <> "/") (T.pack exName) pageHtml
 
@@ -92,14 +92,7 @@ parseExample syntax (Example { exSrc, exUrl, exName, exRunning }) = do
 
     examplePage :: T.Text -> Html ()
     examplePage srcHtml = do
-      maybe mempty runningOn exRunning
       toHtmlRaw srcHtml
-
-    runningOn :: String -> Html ()
-    runningOn url = do
-      p_ $ do
-        "Running on "
-        a_ [ href_ (T.pack url) ] (toHtml url)
 
 
 main :: IO ()
@@ -118,17 +111,14 @@ main = do
       chatExample = Example { exUrl = "chat"
                             , exSrc = exampleDir <> "/chat/chat.kj"
                             , exName = "A Simple Chat Server"
-                            , exRunning = Just "https://chat.kuljet.com"
                             }
       forumExample = Example { exUrl = "forum"
                              , exSrc = exampleDir <> "/forum/forum.kj"
                              , exName = "A Forum"
-                             , exRunning = Just "https://forum.kuljet.com"
                              }
       jsonExample = Example { exUrl = "simplejson"
                             , exSrc = exampleDir <> "/simplejson/simplejson.kj"
                             , exName = "A Simple JSON API"
-                            , exRunning = Nothing
                             }
     in
       mapM (parseExample syntax) [ chatExample, forumExample, jsonExample ]
