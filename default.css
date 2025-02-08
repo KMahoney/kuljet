@@ -1,0 +1,166 @@
+* { box-sizing: border-box; }
+
+html {
+    font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","Liberation Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";
+    line-height: 1.6;
+}
+
+body {
+    font-size: 1rem;
+    color: #000;
+}
+
+h1 {
+    font-size: 1.8rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin: 1rem 0rem 4rem 0rem;
+}
+
+h2 {
+    margin-top: 4rem;
+    font-size: 1.5rem;
+}
+
+section {
+    padding: 1rem;
+}
+
+
+/* nav */
+
+nav {
+    background: #F2f2f2;
+    padding: 2rem 0rem;
+}
+
+nav ul {
+    list-style: none;
+    margin: 0 0 1rem 0;
+    padding: 0;
+}
+
+nav > ul > li {
+    padding: 0.5rem 2rem 0.5rem 2rem;
+}
+
+nav > ul > ul > li > a {
+    display: block;
+    padding: 0.5rem 2rem 0.5rem 4rem;
+}
+
+nav li.selected {
+    background: #e8e8e8;
+}
+
+nav a {
+    text-decoration: none;
+    color: #4152d2;
+}
+
+
+/* code */
+
+:not(pre) > code {
+    white-space: nowrap;
+    background-color: #fafafa;
+    padding: 0.2rem 0.6rem;
+}
+
+code {
+    font-family: SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+}
+
+pre {
+    color: #3c3c3b;
+    background-color: #fefefe;
+    padding: 1rem;
+    overflow-x: auto;
+    border: 3px solid #fafafa;
+    width: fit-content;
+    max-width: 100%;
+}
+
+.sourceCode .kw { color: #000000; font-weight: bold; }
+.sourceCode .st { color: #941616; }
+.sourceCode .va { color: #bf4f04; }
+.sourceCode .bu { color: #242a80; }
+.sourceCode .co { color: #44921d; }
+
+
+/* tables */
+
+table {
+    overflow-x: auto;
+    width: max-content;
+    display: block;
+    max-width: 100%;
+    border-color: grey;
+    border-spacing: 0;
+    border-collapse: collapse;
+}
+
+table tr {
+    background-color: #f1f1f1;
+}
+
+table th {
+    background-color: #cecece;
+}
+
+table tr:nth-child(2n) {
+    background-color: #f7f7f7;
+}
+
+table td, table th {
+    padding: 6px 13px;
+    border: 1px solid #a5a5a5;
+}
+
+
+/* responsive */
+
+@media (max-width: 60rem) {
+    body {
+        margin: 0;
+    }
+    main {
+        width: 90%;
+        margin: 0 auto;
+    }
+    h1 {
+        text-align: left;
+    }
+    nav {
+        display: none;
+    }
+    #navBar {
+        display: block;
+        padding: 1rem 1rem;
+        background: #DDD;
+    }
+}
+
+@media (min-width: 60rem) {
+    body {
+        margin: 0;
+        display: flex;
+    }
+    main {
+        flex-shrink: 1;
+        min-width: 30rem;
+        width: 100%;
+        padding: 2rem;
+    }
+    nav {
+        flex-shrink: 0;
+        display: block !important;
+        min-height: 100vh;
+    }
+    #navBar {
+        display: none;
+    }
+    p {
+        max-width: 50rem;
+    }
+}

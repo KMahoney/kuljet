@@ -1,0 +1,58 @@
+<!DOCTYPE HTML><html><head><meta charset="utf-8"><meta http-equiv="x-ua-compatible" content="ie=edge"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/default.css"><title>Kuljet: Expressions</title></head><body><div id="navBar" onclick="var navStyle = document.querySelector(&#39;nav&#39;).style; navStyle.display = navStyle.display === &#39;block&#39; ? &#39;none&#39; : &#39;block&#39;"><img src="/bars.svg" style="height: 1.2rem; pointer-events: none;"></div><nav><ul><li>Kuljet</li><ul><li class><a href="/">Introduction</a></li><li class><a href="/install/">Install</a></li><li><a href="https://github.com/KMahoney/kuljet"><img src="/ext.svg" style="height: 0.8rem; margin-right: 0.1rem;">GitHub</a></li></ul><li>Examples</li><ul><li class><a href="/examples/chat/">A Simple Chat Server</a></li><li class><a href="/examples/forum/">A Forum</a></li><li class><a href="/examples/simplejson/">A Simple JSON API</a></li></ul><li>Guides</li><ul><li class="selected"><a href="/guides/expressions/">Expressions</a></li><li class><a href="/guides/structure/">The Structure of a Kuljet Program</a></li><li class><a href="/guides/writing-html/">Writing HTML</a></li><li class><a href="/guides/database/">Interacting with the Database</a></li></ul><li>Reference</li><ul><li class><a href="/reference/stdlib/">Standard Library</a></li></ul><li>Notes</li><ul><li class><a href="/notes/future/">Future Work</a></li></ul></ul></nav><main><h1>Expressions</h1><p>Those who have seen an ML-based language before will find Kuljet's
+expression syntax familiar ground, and can probably skip to the next
+section.</p>
+<h2 id="literals">Literals</h2>
+<p>Expressions can be literals, such as <code>"string"</code> or
+<code>123</code>.</p>
+<p>Construct lists square brackets, like <code>[ 1, 2, 3 ]</code>.</p>
+<p>Construct records with curly brackets, like
+<code>{ a = 1, b = 2 }</code>.</p>
+<p>P.S. Access values of a record with a dot:
+<code>record.field</code>.</p>
+<h2 id="function-application">Function Application</h2>
+<p>Unlike C-style languages, function application does not require
+parentheses. Given a function <code>a</code> which takes two integers
+and returns an integer (i.e. type <code>int -&gt; int -&gt; int</code>),
+then <code>a 1 2</code> calls that function with arguments
+<code>1</code> and <code>2</code>.</p>
+<p>Functions are partially applied, so <code>a 1</code> gives a function
+of type <code>int -&gt; int</code>, and <code>(a 1) 2</code> is the same
+as <code>a 1 2</code>.</p>
+<p>Use parentheses for nested application e.g.
+<code>a (a 1 2) 2</code>.</p>
+<h2 id="let">Let</h2>
+<p>Introduce names for expressions by using <code>let</code>.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode kuljet"><code class="sourceCode kuljetsyntax"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span><span class="va"> |name|</span> = |expression| <span class="kw">in</span> |expression|</span></code></pre></div>
+<p>e.g.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode kuljet"><code class="sourceCode kuljetsyntax"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span><span class="va"> x</span> = 1 <span class="kw">in</span> x + x</span></code></pre></div>
+<h2 id="functions">Functions</h2>
+<p>Write functions with the <code>fun</code> keyword:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode kuljet"><code class="sourceCode kuljetsyntax"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">fun</span> |var| -&gt; |expression|</span></code></pre></div>
+<p>You will sometimes need to provide the type of the function argument
+using a <em>type annotation</em>:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode kuljet"><code class="sourceCode kuljetsyntax"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">fun</span> |var|: |type| -&gt; |expression|</span></code></pre></div>
+<h2 id="binary-operators">Binary Operators</h2>
+<p>Operate on numbers with <code>+</code>, <code>-</code>,
+<code>*</code> and <code>/</code>.</p>
+<p>Compare with <code>=</code>, <code>&lt;</code>, <code>&gt;</code>,
+<code>&lt;=</code> and <code>&gt;=</code>.</p>
+<p>Combine Boolean values with <code>and</code> and <code>or</code>.</p>
+<p>Concatenate text with <code>||</code>.</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode kuljet"><code class="sourceCode kuljetsyntax"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>1 &lt;= 2 <span class="kw">and</span> (3 = 3 + 1 <span class="kw">or</span> 3 = 3)</span></code></pre></div>
+<h2 id="if-expression">If expression</h2>
+<p><code>if</code> expressions are written:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode kuljet"><code class="sourceCode kuljetsyntax"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">if</span> |condition| <span class="kw">then</span> |expression| <span class="kw">else</span> |expression|</span></code></pre></div>
+<p>Unlike C-style languages, they are expressions not statements.</p>
+<h2 id="then-expression">Then expression</h2>
+<p>A <code>then</code> expression is written:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode kuljet"><code class="sourceCode kuljetsyntax"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>|expression| [<span class="kw">as</span><span class="va"> |name|</span>] <span class="kw">then</span> |expression|</span></code></pre></div>
+<p>where the first expression has type <code>io</code>. The
+<code>then</code> expression evaluates the IO action, optionally binding
+the result to <code>|name|</code>.</p></main></body></html>

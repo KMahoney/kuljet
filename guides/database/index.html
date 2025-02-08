@@ -1,0 +1,74 @@
+<!DOCTYPE HTML><html><head><meta charset="utf-8"><meta http-equiv="x-ua-compatible" content="ie=edge"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/default.css"><title>Kuljet: Interacting with the Database</title></head><body><div id="navBar" onclick="var navStyle = document.querySelector(&#39;nav&#39;).style; navStyle.display = navStyle.display === &#39;block&#39; ? &#39;none&#39; : &#39;block&#39;"><img src="/bars.svg" style="height: 1.2rem; pointer-events: none;"></div><nav><ul><li>Kuljet</li><ul><li class><a href="/">Introduction</a></li><li class><a href="/install/">Install</a></li><li><a href="https://github.com/KMahoney/kuljet"><img src="/ext.svg" style="height: 0.8rem; margin-right: 0.1rem;">GitHub</a></li></ul><li>Examples</li><ul><li class><a href="/examples/chat/">A Simple Chat Server</a></li><li class><a href="/examples/forum/">A Forum</a></li><li class><a href="/examples/simplejson/">A Simple JSON API</a></li></ul><li>Guides</li><ul><li class><a href="/guides/expressions/">Expressions</a></li><li class><a href="/guides/structure/">The Structure of a Kuljet Program</a></li><li class><a href="/guides/writing-html/">Writing HTML</a></li><li class="selected"><a href="/guides/database/">Interacting with the Database</a></li></ul><li>Reference</li><ul><li class><a href="/reference/stdlib/">Standard Library</a></li></ul><li>Notes</li><ul><li class><a href="/notes/future/">Future Work</a></li></ul></ul></nav><main><h1>Interacting with the Database</h1><h2 id="declaring-tables">Declaring Tables</h2>
+<p>To query a table, specify the type of its fields with a
+<code>table</code> declaration. As of writing, valid types for fields
+are <code>text</code>, <code>int</code> and <code>timestamp</code>.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode kuljet"><code class="sourceCode kuljetsyntax"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">table</span><span class="va"> example</span> { textField: text, intField: int, tsField: timestamp }</span></code></pre></div>
+<h2 id="yield">Yield</h2>
+<p>The yield operator <code>-&gt;</code> executes a query, such as a
+table, and maps it to a Kuljet expression. In the expression, fields of
+the query can be referenced by name.</p>
+<p>For example,</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode kuljet"><code class="sourceCode kuljetsyntax"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">table</span><span class="va"> ints</span> { i: int }</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">serve</span> <span class="kw">get</span> / = <span class="bu">&lt;ul&gt;</span> (ints -&gt; <span class="bu">&lt;li&gt;</span> i)</span></code></pre></div>
+<p>If table <code>ints</code> contained values 1 to 3, the output would
+be:</p>
+<pre class="html"><code>&lt;ul&gt;&lt;li&gt;1&lt;/li&gt;&lt;li&gt;2&lt;/li&gt;&lt;li&gt;3&lt;/li&gt;&lt;/ul&gt;</code></pre>
+<h2 id="relational-operators">Relational Operators</h2>
+<p>Tables can be queried with the <code>select</code>,
+<code>where</code>, <code>order</code> and <code>limit</code>
+operators.</p>
+<section>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode kuljet"><code class="sourceCode kuljetsyntax"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>example <span class="kw">select</span> { textField, intField = intField + 1 }</span></code></pre></div>
+<p>is equivalent to the SQL:</p>
+<pre class="sql"><code>SELECT textField, intField + 1 AS intField FROM example</code></pre>
+Note that you can name pun fields, so <code>select { textField }</code>
+is the same as <code>select { textField = textField }</code>.
+</section>
+<section>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode kuljet"><code class="sourceCode kuljetsyntax"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>example <span class="kw">where</span> intField = 1</span></code></pre></div>
+<p>is equivalent to the SQL:</p>
+<pre class="sql"><code>SELECT * FROM example WHERE intField = 1</code></pre>
+</section>
+<section>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode kuljet"><code class="sourceCode kuljetsyntax"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>example <span class="kw">order</span> intField <span class="kw">desc</span></span></code></pre></div>
+<p>is equivalent to the SQL:</p>
+<pre class="sql"><code>SELECT * FROM example ORDER BY intField DESC</code></pre>
+</section>
+<section>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode kuljet"><code class="sourceCode kuljetsyntax"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>example <span class="kw">limit</span> 100</span></code></pre></div>
+<p>is equivalent to the SQL:</p>
+<pre class="sql"><code>SELECT * FROM example LIMIT 100</code></pre>
+</section>
+<section>
+<div class="sourceCode" id="cb12"><pre
+class="sourceCode kuljet"><code class="sourceCode kuljetsyntax"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>example1 <span class="kw">natJoin</span> example2</span></code></pre></div>
+<p>is equivalent to the SQL:</p>
+<pre class="sql"><code>SELECT * FROM example1 NATURAL JOIN example2</code></pre>
+Both tables will need at least one field in common to perform a natural
+join, or the expression will result in a type error.
+</section>
+<h2 id="inserting-data">Inserting Data</h2>
+<p>An <code>insert</code> expression has the syntax:</p>
+<div class="sourceCode" id="cb14"><pre
+class="sourceCode kuljet"><code class="sourceCode kuljetsyntax"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="kw">insert</span><span class="va"> |tableName|</span> |expression|</span></code></pre></div>
+<p>where <code>|expression|</code> is a record matching the type of a
+table row.</p>
+<p>An insert expression has type <code>io unit</code>, meaning it is an
+IO action that can be executed with the
+<code>|io-expression| then |expression|</code> form.</p>
+<p>It is common to insert data in response to a POST request, and then
+redirect:</p>
+<div class="sourceCode" id="cb15"><pre
+class="sourceCode kuljet"><code class="sourceCode kuljetsyntax"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="kw">table</span><span class="va"> example</span> { a: text, b: text }</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="kw">serve</span> <span class="kw">post</span> / =</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">fun</span> data: { a: text, b: text } -&gt;</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>     <span class="kw">insert</span><span class="va"> example</span> data <span class="kw">then</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>     redirect <span class="st">&quot;/&quot;</span></span></code></pre></div></main></body></html>

@@ -1,0 +1,74 @@
+<!DOCTYPE HTML><html><head><meta charset="utf-8"><meta http-equiv="x-ua-compatible" content="ie=edge"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/default.css"><title>Kuljet: Writing HTML</title></head><body><div id="navBar" onclick="var navStyle = document.querySelector(&#39;nav&#39;).style; navStyle.display = navStyle.display === &#39;block&#39; ? &#39;none&#39; : &#39;block&#39;"><img src="/bars.svg" style="height: 1.2rem; pointer-events: none;"></div><nav><ul><li>Kuljet</li><ul><li class><a href="/">Introduction</a></li><li class><a href="/install/">Install</a></li><li><a href="https://github.com/KMahoney/kuljet"><img src="/ext.svg" style="height: 0.8rem; margin-right: 0.1rem;">GitHub</a></li></ul><li>Examples</li><ul><li class><a href="/examples/chat/">A Simple Chat Server</a></li><li class><a href="/examples/forum/">A Forum</a></li><li class><a href="/examples/simplejson/">A Simple JSON API</a></li></ul><li>Guides</li><ul><li class><a href="/guides/expressions/">Expressions</a></li><li class><a href="/guides/structure/">The Structure of a Kuljet Program</a></li><li class="selected"><a href="/guides/writing-html/">Writing HTML</a></li><li class><a href="/guides/database/">Interacting with the Database</a></li></ul><li>Reference</li><ul><li class><a href="/reference/stdlib/">Standard Library</a></li></ul><li>Notes</li><ul><li class><a href="/notes/future/">Future Work</a></li></ul></ul></nav><main><h1>Writing HTML</h1><p>Strings, numbers and lists of HTML are sub-types of
+<code>html</code>, so you can write HTML like this:</p>
+<table>
+<thead>
+<tr class="header">
+<th>expression</th>
+<th>HTML output</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>1</td>
+</tr>
+<tr class="even">
+<td>"Hello"</td>
+<td>Hello</td>
+</tr>
+<tr class="odd">
+<td>"&lt;unsafe&gt;"</td>
+<td>&amp;lt;unsafe&amp;gt;</td>
+</tr>
+<tr class="even">
+<td>[1, 2, 3, "Hello"]</td>
+<td>123Hello</td>
+</tr>
+</tbody>
+</table>
+<p>Any name enclosed in angle brackets is a <em>tag function</em> that
+has type <code>htmlTag</code>. You can build HTML using tag functions
+such as <code>&lt;p&gt;</code> and <code>&lt;div&gt;</code>, and they
+can optionally be provided attributes and child HTML.</p>
+<table>
+<colgroup>
+<col style="width: 40%" />
+<col style="width: 44%" />
+<col style="width: 16%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>expression</th>
+<th>HTML output</th>
+<th>type</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>&lt;div&gt;</td>
+<td>&lt;div&gt;&lt;/div&gt;</td>
+<td>htmlTag</td>
+</tr>
+<tr class="even">
+<td>&lt;div&gt; "hello"</td>
+<td>&lt;div&gt;hello&lt;/div&gt;</td>
+<td>html</td>
+</tr>
+<tr class="odd">
+<td>&lt;div&gt; { class = "someclass" }</td>
+<td>&lt;div class="someclass"&gt;&lt;/div&gt;</td>
+<td>htmlTagWithAttrs</td>
+</tr>
+<tr class="even">
+<td>&lt;div&gt; { class = "someclass" } "hello"</td>
+<td>&lt;div class="someclass"&gt;hello&lt;/div&gt;</td>
+<td>html</td>
+</tr>
+<tr class="odd">
+<td>&lt;div&gt; [ div 1, div 2 ]</td>
+<td>&lt;div&gt;&lt;div&gt;1&lt;/div&gt;&lt;div&gt;2&lt;/div&gt;&lt;/div&gt;</td>
+<td>html</td>
+</tr>
+</tbody>
+</table>
+<p>Attributes are records with fields of type <code>text</code>.</p></main></body></html>

@@ -1,0 +1,60 @@
+<!DOCTYPE HTML><html><head><meta charset="utf-8"><meta http-equiv="x-ua-compatible" content="ie=edge"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/default.css"><title>Kuljet: The Structure of a Kuljet Program</title></head><body><div id="navBar" onclick="var navStyle = document.querySelector(&#39;nav&#39;).style; navStyle.display = navStyle.display === &#39;block&#39; ? &#39;none&#39; : &#39;block&#39;"><img src="/bars.svg" style="height: 1.2rem; pointer-events: none;"></div><nav><ul><li>Kuljet</li><ul><li class><a href="/">Introduction</a></li><li class><a href="/install/">Install</a></li><li><a href="https://github.com/KMahoney/kuljet"><img src="/ext.svg" style="height: 0.8rem; margin-right: 0.1rem;">GitHub</a></li></ul><li>Examples</li><ul><li class><a href="/examples/chat/">A Simple Chat Server</a></li><li class><a href="/examples/forum/">A Forum</a></li><li class><a href="/examples/simplejson/">A Simple JSON API</a></li></ul><li>Guides</li><ul><li class><a href="/guides/expressions/">Expressions</a></li><li class="selected"><a href="/guides/structure/">The Structure of a Kuljet Program</a></li><li class><a href="/guides/writing-html/">Writing HTML</a></li><li class><a href="/guides/database/">Interacting with the Database</a></li></ul><li>Reference</li><ul><li class><a href="/reference/stdlib/">Standard Library</a></li></ul><li>Notes</li><ul><li class><a href="/notes/future/">Future Work</a></li></ul></ul></nav><main><h1>The Structure of a Kuljet Program</h1><p>A Kuljet program is made up of <code>table</code> declarations,
+<code>let</code> declarations and <code>serve</code> declarations.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode kuljet"><code class="sourceCode kuljetsyntax"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">table</span><span class="va"> |name|</span> { |field|: |type|, ... }</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span><span class="va"> |name|</span> = |expression|</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="kw">serve</span> |method| |path| = |expression|</span></code></pre></div>
+<h2 id="table-declaration">Table Declaration</h2>
+<p>A <strong>table declaration</strong> should reflect the names and
+types of a table in your database. It has the form:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode kuljet"><code class="sourceCode kuljetsyntax"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">table</span><span class="va"> |name|</span> { |field|: |type|, ... }</span></code></pre></div>
+<p>e.g.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode kuljet"><code class="sourceCode kuljetsyntax"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">table</span><span class="va"> people</span> { name: text, age: int }</span></code></pre></div>
+<h2 id="let-declaration">Let Declaration</h2>
+<p>A top level <strong>let declaration</strong> binds a name to an
+expression for all following declarations.</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode kuljet"><code class="sourceCode kuljetsyntax"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span><span class="va"> |name|</span> = |expression|</span></code></pre></div>
+<p>e.g.</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode kuljet"><code class="sourceCode kuljetsyntax"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span><span class="va"> x</span> = 1</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span><span class="va"> add1</span> = <span class="kw">fun</span> x -&gt; x + 1</span></code></pre></div>
+<h2 id="serve-declaration">Serve Declaration</h2>
+<p>A <strong>serve declaration</strong> routes a HTTP request to an
+expression, and has the form:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode kuljet"><code class="sourceCode kuljetsyntax"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">serve</span> |method| |path| = |expression|</span></code></pre></div>
+<p><code>|method|</code> is the HTTP verb to match on (<code>get</code>
+or <code>post</code>).</p>
+<p><code>|path|</code> is a path pattern that can contain named
+variables.</p>
+<p><code>|expression|</code> is a Kuljet expression that results in a
+valid response.</p>
+<p>e.g.</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode kuljet"><code class="sourceCode kuljetsyntax"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">serve</span> <span class="kw">get</span> /:name =</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="bu">&lt;p&gt;</span> [<span class="st">&quot;Hello &quot;</span>, name]</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="kw">serve</span> <span class="kw">post</span> /form =</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">fun</span> postVars: { name: text } -&gt;</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    <span class="bu">&lt;p&gt;</span> [<span class="st">&quot;Hello &quot;</span>, postVars.name]</span></code></pre></div>
+<p>Those paying attention will have noticed that paths can have
+placeholders starting with a colon (<code>:</code>) and
+<code>post</code> endpoints can be defined as a function taking
+form-encoded inputs.</p>
+<p>Most types can be inferred, but the type of the <code>postVars</code>
+argument will need to be specified here.</p>
+<h2 id="comment-blocks">Comment Blocks</h2>
+<p>Comment blocks start and end with <code>---</code>, like this:</p>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode kuljet"><code class="sourceCode kuljetsyntax"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="co">This is a comment</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span></code></pre></div>
+<p>Note that, unlike most other languages, this cannot be placed
+anywhere in the source code. A comment must be in-between other top
+level declarations.</p></main></body></html>

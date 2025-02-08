@@ -1,0 +1,257 @@
+<!DOCTYPE HTML><html><head><meta charset="utf-8"><meta http-equiv="x-ua-compatible" content="ie=edge"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/default.css"><title>Kuljet: A Forum</title></head><body><div id="navBar" onclick="var navStyle = document.querySelector(&#39;nav&#39;).style; navStyle.display = navStyle.display === &#39;block&#39; ? &#39;none&#39; : &#39;block&#39;"><img src="/bars.svg" style="height: 1.2rem; pointer-events: none;"></div><nav><ul><li>Kuljet</li><ul><li class><a href="/">Introduction</a></li><li class><a href="/install/">Install</a></li><li><a href="https://github.com/KMahoney/kuljet"><img src="/ext.svg" style="height: 0.8rem; margin-right: 0.1rem;">GitHub</a></li></ul><li>Examples</li><ul><li class><a href="/examples/chat/">A Simple Chat Server</a></li><li class="selected"><a href="/examples/forum/">A Forum</a></li><li class><a href="/examples/simplejson/">A Simple JSON API</a></li></ul><li>Guides</li><ul><li class><a href="/guides/expressions/">Expressions</a></li><li class><a href="/guides/structure/">The Structure of a Kuljet Program</a></li><li class><a href="/guides/writing-html/">Writing HTML</a></li><li class><a href="/guides/database/">Interacting with the Database</a></li></ul><li>Reference</li><ul><li class><a href="/reference/stdlib/">Standard Library</a></li></ul><li>Notes</li><ul><li class><a href="/notes/future/">Future Work</a></li></ul></ul></nav><main><h1>A Forum</h1><div class="sourceCode"><pre class="sourceCode"><code class="sourceCode"><span id="1"><a href="#1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="2"><a href="#2" aria-hidden="true" tabindex="-1"></a><span class="co">Basic user/session tables and helpers for handling users.</span></span>
+<span id="3"><a href="#3" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="4"><a href="#4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="5"><a href="#5" aria-hidden="true" tabindex="-1"></a><span class="kw">table</span><span class="va"> users</span> { user_id: text, username: text, password: password }</span>
+<span id="6"><a href="#6" aria-hidden="true" tabindex="-1"></a><span class="kw">table</span><span class="va"> sessions</span> { session_id: text, user_id: text }</span>
+<span id="7"><a href="#7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="8"><a href="#8" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span><span class="va"> user</span> =</span>
+<span id="9"><a href="#9" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span><span class="va"> lookupSession</span> =</span>
+<span id="10"><a href="#10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">fun</span> sessionId -&gt;</span>
+<span id="11"><a href="#11" aria-hidden="true" tabindex="-1"></a>      <span class="kw">let</span><span class="va"> query</span> =</span>
+<span id="12"><a href="#12" aria-hidden="true" tabindex="-1"></a>        sessions <span class="kw">natJoin</span> users</span>
+<span id="13"><a href="#13" aria-hidden="true" tabindex="-1"></a>                 <span class="kw">where</span> session_id = sessionId</span>
+<span id="14"><a href="#14" aria-hidden="true" tabindex="-1"></a>                 <span class="kw">select</span> { user_id, username }</span>
+<span id="15"><a href="#15" aria-hidden="true" tabindex="-1"></a>      <span class="kw">in</span> listHead (query -&gt; { user_id, username })</span>
+<span id="16"><a href="#16" aria-hidden="true" tabindex="-1"></a>  <span class="kw">in</span></span>
+<span id="17"><a href="#17" aria-hidden="true" tabindex="-1"></a>  bindMaybe (cookie <span class="st">&quot;forumSessionId&quot;</span>) lookupSession</span>
+<span id="18"><a href="#18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="19"><a href="#19" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span><span class="va"> showWhenLoggedIn</span> =</span>
+<span id="20"><a href="#20" aria-hidden="true" tabindex="-1"></a>  <span class="kw">fun</span> content -&gt;</span>
+<span id="21"><a href="#21" aria-hidden="true" tabindex="-1"></a>    maybe user emptyHtml (<span class="kw">fun</span> _ -&gt; content)</span>
+<span id="22"><a href="#22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="23"><a href="#23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="24"><a href="#24" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="25"><a href="#25" aria-hidden="true" tabindex="-1"></a><span class="co">The HTML template for forum pages.</span></span>
+<span id="26"><a href="#26" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="27"><a href="#27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="28"><a href="#28" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span><span class="va"> template</span> =</span>
+<span id="29"><a href="#29" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span><span class="va"> newUserLinks</span> =</span>
+<span id="30"><a href="#30" aria-hidden="true" tabindex="-1"></a>    [ <span class="bu">&lt;li&gt;</span> (<span class="bu">&lt;a&gt;</span> { href = <span class="st">&quot;/users/new&quot;</span> } <span class="st">&quot;Create User&quot;</span>)</span>
+<span id="31"><a href="#31" aria-hidden="true" tabindex="-1"></a>    , <span class="bu">&lt;li&gt;</span> (<span class="bu">&lt;a&gt;</span> { href = <span class="st">&quot;/sessions/new&quot;</span> } <span class="st">&quot;Log in&quot;</span>)</span>
+<span id="32"><a href="#32" aria-hidden="true" tabindex="-1"></a>    ] : html</span>
+<span id="33"><a href="#33" aria-hidden="true" tabindex="-1"></a>  <span class="kw">in</span></span>
+<span id="34"><a href="#34" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span><span class="va"> userLinks</span> =</span>
+<span id="35"><a href="#35" aria-hidden="true" tabindex="-1"></a>    <span class="kw">fun</span> user -&gt;</span>
+<span id="36"><a href="#36" aria-hidden="true" tabindex="-1"></a>      <span class="kw">let</span><span class="va"> logOutForm</span> =</span>
+<span id="37"><a href="#37" aria-hidden="true" tabindex="-1"></a>        <span class="bu">&lt;form&gt;</span> { method = <span class="st">&quot;POST&quot;</span>, action = <span class="st">&quot;/sessions/delete&quot;</span> }</span>
+<span id="38"><a href="#38" aria-hidden="true" tabindex="-1"></a>          [ <span class="bu">&lt;input&gt;</span> { type = <span class="st">&quot;submit&quot;</span>, value = (<span class="st">&quot;Log Out (&quot;</span> || user.username || <span class="st">&quot;)&quot;</span>) } ]</span>
+<span id="39"><a href="#39" aria-hidden="true" tabindex="-1"></a>      <span class="kw">in</span></span>
+<span id="40"><a href="#40" aria-hidden="true" tabindex="-1"></a>      <span class="bu">&lt;li&gt;</span> logOutForm</span>
+<span id="41"><a href="#41" aria-hidden="true" tabindex="-1"></a>  <span class="kw">in</span></span>
+<span id="42"><a href="#42" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span><span class="va"> siteNav</span> =</span>
+<span id="43"><a href="#43" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span><span class="va"> navLinks</span> =</span>
+<span id="44"><a href="#44" aria-hidden="true" tabindex="-1"></a>      [ <span class="bu">&lt;li&gt;</span> (<span class="bu">&lt;a&gt;</span> { href = <span class="st">&quot;/&quot;</span> } <span class="st">&quot;Home&quot;</span>)</span>
+<span id="45"><a href="#45" aria-hidden="true" tabindex="-1"></a>      , maybe user newUserLinks userLinks</span>
+<span id="46"><a href="#46" aria-hidden="true" tabindex="-1"></a>      ]</span>
+<span id="47"><a href="#47" aria-hidden="true" tabindex="-1"></a>    <span class="kw">in</span></span>
+<span id="48"><a href="#48" aria-hidden="true" tabindex="-1"></a>    <span class="bu">&lt;nav&gt;</span> (<span class="bu">&lt;ul&gt;</span> navLinks)</span>
+<span id="49"><a href="#49" aria-hidden="true" tabindex="-1"></a>  <span class="kw">in</span></span>
+<span id="50"><a href="#50" aria-hidden="true" tabindex="-1"></a>  <span class="kw">fun</span> content -&gt;</span>
+<span id="51"><a href="#51" aria-hidden="true" tabindex="-1"></a>    [ docType</span>
+<span id="52"><a href="#52" aria-hidden="true" tabindex="-1"></a>    , <span class="bu">&lt;html&gt;</span> [ <span class="bu">&lt;head&gt;</span> [ <span class="bu">&lt;link&gt;</span> { href = <span class="st">&quot;/style.css&quot;</span>, rel = <span class="st">&quot;stylesheet&quot;</span> }</span>
+<span id="53"><a href="#53" aria-hidden="true" tabindex="-1"></a>                      , <span class="bu">&lt;meta&gt;</span> { name = <span class="st">&quot;viewport&quot;</span>, content = <span class="st">&quot;width=device-width, intial-scale=1&quot;</span> }</span>
+<span id="54"><a href="#54" aria-hidden="true" tabindex="-1"></a>                      ]</span>
+<span id="55"><a href="#55" aria-hidden="true" tabindex="-1"></a>           , <span class="bu">&lt;body&gt;</span> [ siteNav, <span class="bu">&lt;main&gt;</span> content ]</span>
+<span id="56"><a href="#56" aria-hidden="true" tabindex="-1"></a>           ]</span>
+<span id="57"><a href="#57" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="58"><a href="#58" aria-hidden="true" tabindex="-1"></a></span>
+<span id="59"><a href="#59" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span><span class="va"> permissionDenied</span> =</span>
+<span id="60"><a href="#60" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;permission denied!&quot;</span> : response</span>
+<span id="61"><a href="#61" aria-hidden="true" tabindex="-1"></a></span>
+<span id="62"><a href="#62" aria-hidden="true" tabindex="-1"></a></span>
+<span id="63"><a href="#63" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="64"><a href="#64" aria-hidden="true" tabindex="-1"></a><span class="co">Tables for forum posts.</span></span>
+<span id="65"><a href="#65" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="66"><a href="#66" aria-hidden="true" tabindex="-1"></a></span>
+<span id="67"><a href="#67" aria-hidden="true" tabindex="-1"></a><span class="kw">table</span><span class="va"> topics</span> { topic_id: text, user_id: text, title: text, created: timestamp }</span>
+<span id="68"><a href="#68" aria-hidden="true" tabindex="-1"></a><span class="kw">table</span><span class="va"> posts</span> { topic_id: text, post_id: text, user_id : text, body: text, created: timestamp }</span>
+<span id="69"><a href="#69" aria-hidden="true" tabindex="-1"></a></span>
+<span id="70"><a href="#70" aria-hidden="true" tabindex="-1"></a></span>
+<span id="71"><a href="#71" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="72"><a href="#72" aria-hidden="true" tabindex="-1"></a><span class="co">The index shows a list of forum topics.</span></span>
+<span id="73"><a href="#73" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="74"><a href="#74" aria-hidden="true" tabindex="-1"></a></span>
+<span id="75"><a href="#75" aria-hidden="true" tabindex="-1"></a><span class="kw">serve</span> <span class="kw">get</span> / =</span>
+<span id="76"><a href="#76" aria-hidden="true" tabindex="-1"></a>  template [ showWhenLoggedIn (<span class="bu">&lt;a&gt;</span> { href = <span class="st">&quot;/topics/new&quot;</span> } <span class="st">&quot;Create new topic&quot;</span>)</span>
+<span id="77"><a href="#77" aria-hidden="true" tabindex="-1"></a>           , &lt;h1&gt; <span class="st">&quot;Latest Topics&quot;</span></span>
+<span id="78"><a href="#78" aria-hidden="true" tabindex="-1"></a>           , <span class="bu">&lt;ul&gt;</span> { class = <span class="st">&quot;topics&quot;</span> }</span>
+<span id="79"><a href="#79" aria-hidden="true" tabindex="-1"></a>               (topics <span class="kw">natJoin</span> users <span class="kw">order</span> created <span class="kw">desc</span> <span class="kw">select</span> { topic_id, title, username, created } -&gt;</span>
+<span id="80"><a href="#80" aria-hidden="true" tabindex="-1"></a>                 <span class="bu">&lt;li&gt;</span> [ <span class="bu">&lt;a&gt;</span> {href = <span class="st">&quot;/topics/&quot;</span> || topic_id} title</span>
+<span id="81"><a href="#81" aria-hidden="true" tabindex="-1"></a>                    , <span class="bu">&lt;span&gt;</span> { class = <span class="st">&quot;author&quot;</span> } (<span class="st">&quot; by &quot;</span> || username || <span class="st">&quot; &quot;</span>)</span>
+<span id="82"><a href="#82" aria-hidden="true" tabindex="-1"></a>                    , <span class="bu">&lt;span&gt;</span> { class = <span class="st">&quot;timestamp&quot;</span> } (<span class="st">&quot;(&quot;</span> || relativeTime created || <span class="st">&quot;)&quot;</span>)</span>
+<span id="83"><a href="#83" aria-hidden="true" tabindex="-1"></a>                    ])</span>
+<span id="84"><a href="#84" aria-hidden="true" tabindex="-1"></a>           ]</span>
+<span id="85"><a href="#85" aria-hidden="true" tabindex="-1"></a></span>
+<span id="86"><a href="#86" aria-hidden="true" tabindex="-1"></a></span>
+<span id="87"><a href="#87" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="88"><a href="#88" aria-hidden="true" tabindex="-1"></a><span class="co">Creating a new topic.</span></span>
+<span id="89"><a href="#89" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="90"><a href="#90" aria-hidden="true" tabindex="-1"></a></span>
+<span id="91"><a href="#91" aria-hidden="true" tabindex="-1"></a><span class="kw">serve</span> <span class="kw">get</span> /topics/new =</span>
+<span id="92"><a href="#92" aria-hidden="true" tabindex="-1"></a>  template</span>
+<span id="93"><a href="#93" aria-hidden="true" tabindex="-1"></a>    [ &lt;h1&gt; <span class="st">&quot;Create New Topic&quot;</span></span>
+<span id="94"><a href="#94" aria-hidden="true" tabindex="-1"></a>    , <span class="bu">&lt;form&gt;</span> { method = <span class="st">&quot;POST&quot;</span>, action = <span class="st">&quot;/topics/&quot;</span> }</span>
+<span id="95"><a href="#95" aria-hidden="true" tabindex="-1"></a>      [ <span class="bu">&lt;input&gt;</span> { name = <span class="st">&quot;title&quot;</span>, placeholder = <span class="st">&quot;Title&quot;</span>, required = <span class="st">&quot;true&quot;</span>, autofocus = <span class="st">&quot;true&quot;</span> }</span>
+<span id="96"><a href="#96" aria-hidden="true" tabindex="-1"></a>      , <span class="bu">&lt;textarea&gt;</span> { name = <span class="st">&quot;body&quot;</span>, placeholder = <span class="st">&quot;Body&quot;</span>, required = <span class="st">&quot;true&quot;</span> }</span>
+<span id="97"><a href="#97" aria-hidden="true" tabindex="-1"></a>      , <span class="bu">&lt;input&gt;</span> { type = <span class="st">&quot;submit&quot;</span>, value = <span class="st">&quot;Create Topic&quot;</span> }</span>
+<span id="98"><a href="#98" aria-hidden="true" tabindex="-1"></a>      ]</span>
+<span id="99"><a href="#99" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="100"><a href="#100" aria-hidden="true" tabindex="-1"></a></span>
+<span id="101"><a href="#101" aria-hidden="true" tabindex="-1"></a><span class="kw">serve</span> <span class="kw">post</span> /topics/ =</span>
+<span id="102"><a href="#102" aria-hidden="true" tabindex="-1"></a>  <span class="kw">fun</span> postData : { title : text, body : text } -&gt;</span>
+<span id="103"><a href="#103" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span><span class="va"> insertTopic</span> =</span>
+<span id="104"><a href="#104" aria-hidden="true" tabindex="-1"></a>      <span class="kw">fun</span> user -&gt;</span>
+<span id="105"><a href="#105" aria-hidden="true" tabindex="-1"></a>        genUUID <span class="kw">as</span><span class="va"> topic_id</span> <span class="kw">then</span></span>
+<span id="106"><a href="#106" aria-hidden="true" tabindex="-1"></a>        genUUID <span class="kw">as</span><span class="va"> post_id</span> <span class="kw">then</span></span>
+<span id="107"><a href="#107" aria-hidden="true" tabindex="-1"></a>        <span class="kw">insert</span><span class="va"> topics</span> { topic_id, user_id = user.user_id, title = postData.title, created = now } <span class="kw">then</span></span>
+<span id="108"><a href="#108" aria-hidden="true" tabindex="-1"></a>        <span class="kw">insert</span><span class="va"> posts</span> { topic_id, post_id, user_id = user.user_id, body = postData.body, created = now } <span class="kw">then</span></span>
+<span id="109"><a href="#109" aria-hidden="true" tabindex="-1"></a>        redirect <span class="st">&quot;/&quot;</span></span>
+<span id="110"><a href="#110" aria-hidden="true" tabindex="-1"></a>    <span class="kw">in</span></span>
+<span id="111"><a href="#111" aria-hidden="true" tabindex="-1"></a>    maybe user (liftIO permissionDenied) insertTopic</span>
+<span id="112"><a href="#112" aria-hidden="true" tabindex="-1"></a></span>
+<span id="113"><a href="#113" aria-hidden="true" tabindex="-1"></a></span>
+<span id="114"><a href="#114" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="115"><a href="#115" aria-hidden="true" tabindex="-1"></a><span class="co">Displaying a topic and creating new posts.</span></span>
+<span id="116"><a href="#116" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="117"><a href="#117" aria-hidden="true" tabindex="-1"></a></span>
+<span id="118"><a href="#118" aria-hidden="true" tabindex="-1"></a><span class="kw">serve</span> <span class="kw">get</span> /topics/:id =</span>
+<span id="119"><a href="#119" aria-hidden="true" tabindex="-1"></a>  template [ &lt;h1&gt; (topics <span class="kw">where</span> topic_id = id -&gt; title)</span>
+<span id="120"><a href="#120" aria-hidden="true" tabindex="-1"></a>           , <span class="bu">&lt;ul&gt;</span> { class = <span class="st">&quot;posts&quot;</span> }</span>
+<span id="121"><a href="#121" aria-hidden="true" tabindex="-1"></a>               (posts <span class="kw">natJoin</span> users <span class="kw">where</span> topic_id = id -&gt;</span>
+<span id="122"><a href="#122" aria-hidden="true" tabindex="-1"></a>                 <span class="bu">&lt;li&gt;</span> [ <span class="bu">&lt;span&gt;</span> { class = <span class="st">&quot;content&quot;</span> } (commonMark body)</span>
+<span id="123"><a href="#123" aria-hidden="true" tabindex="-1"></a>                      , <span class="bu">&lt;footer&gt;</span> [ <span class="bu">&lt;span&gt;</span> { class = <span class="st">&quot;author&quot;</span> } (<span class="st">&quot; by &quot;</span> || username || <span class="st">&quot; &quot;</span>)</span>
+<span id="124"><a href="#124" aria-hidden="true" tabindex="-1"></a>                                 , <span class="bu">&lt;span&gt;</span> { class = <span class="st">&quot;timestamp&quot;</span> } (<span class="st">&quot;(&quot;</span> || relativeTime created || <span class="st">&quot;)&quot;</span>)</span>
+<span id="125"><a href="#125" aria-hidden="true" tabindex="-1"></a>                                 ]</span>
+<span id="126"><a href="#126" aria-hidden="true" tabindex="-1"></a>                    ])</span>
+<span id="127"><a href="#127" aria-hidden="true" tabindex="-1"></a>           , showWhenLoggedIn</span>
+<span id="128"><a href="#128" aria-hidden="true" tabindex="-1"></a>               (<span class="bu">&lt;form&gt;</span> { method = <span class="st">&quot;POST&quot;</span>, action = <span class="st">&quot;/posts/&quot;</span>, class = <span class="st">&quot;mt-2&quot;</span> }</span>
+<span id="129"><a href="#129" aria-hidden="true" tabindex="-1"></a>                  [ <span class="bu">&lt;textarea&gt;</span> { name = <span class="st">&quot;body&quot;</span>, required = <span class="st">&quot;true&quot;</span> }</span>
+<span id="130"><a href="#130" aria-hidden="true" tabindex="-1"></a>                  , <span class="bu">&lt;input&gt;</span> { name = <span class="st">&quot;topic_id&quot;</span>, type = <span class="st">&quot;hidden&quot;</span>, value = id }</span>
+<span id="131"><a href="#131" aria-hidden="true" tabindex="-1"></a>                  , <span class="bu">&lt;div&gt;</span> { class = <span class="st">&quot;small mb-1&quot;</span> } [ <span class="bu">&lt;a&gt;</span> { href = <span class="st">&quot;https://commonmark.org/help&quot;</span> } <span class="st">&quot;CommonMark&quot;</span>, <span class="st">&quot; formatting accepted.&quot;</span> ]</span>
+<span id="132"><a href="#132" aria-hidden="true" tabindex="-1"></a>                  , <span class="bu">&lt;input&gt;</span> { type = <span class="st">&quot;submit&quot;</span>, value = <span class="st">&quot;Create Post&quot;</span> }</span>
+<span id="133"><a href="#133" aria-hidden="true" tabindex="-1"></a>                  ])</span>
+<span id="134"><a href="#134" aria-hidden="true" tabindex="-1"></a>           ]</span>
+<span id="135"><a href="#135" aria-hidden="true" tabindex="-1"></a></span>
+<span id="136"><a href="#136" aria-hidden="true" tabindex="-1"></a><span class="kw">serve</span> <span class="kw">post</span> /posts/ =</span>
+<span id="137"><a href="#137" aria-hidden="true" tabindex="-1"></a>  <span class="kw">fun</span> postData : { topic_id : text, body : text } -&gt;</span>
+<span id="138"><a href="#138" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span><span class="va"> insertPost</span> =</span>
+<span id="139"><a href="#139" aria-hidden="true" tabindex="-1"></a>      <span class="kw">fun</span> user -&gt;</span>
+<span id="140"><a href="#140" aria-hidden="true" tabindex="-1"></a>        genUUID <span class="kw">as</span><span class="va"> post_id</span> <span class="kw">then</span></span>
+<span id="141"><a href="#141" aria-hidden="true" tabindex="-1"></a>        <span class="kw">insert</span><span class="va"> posts</span> { topic_id = postData.topic_id, post_id, user_id = user.user_id, body = postData.body, created = now } <span class="kw">then</span></span>
+<span id="142"><a href="#142" aria-hidden="true" tabindex="-1"></a>        redirect (<span class="st">&quot;/topics/&quot;</span> || postData.topic_id)</span>
+<span id="143"><a href="#143" aria-hidden="true" tabindex="-1"></a>    <span class="kw">in</span></span>
+<span id="144"><a href="#144" aria-hidden="true" tabindex="-1"></a>    maybe user (liftIO permissionDenied) insertPost</span>
+<span id="145"><a href="#145" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="146"><a href="#146" aria-hidden="true" tabindex="-1"></a></span>
+<span id="147"><a href="#147" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="148"><a href="#148" aria-hidden="true" tabindex="-1"></a><span class="co">User handling.</span></span>
+<span id="149"><a href="#149" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="150"><a href="#150" aria-hidden="true" tabindex="-1"></a></span>
+<span id="151"><a href="#151" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span><span class="va"> createUserForm</span> =</span>
+<span id="152"><a href="#152" aria-hidden="true" tabindex="-1"></a>  <span class="bu">&lt;form&gt;</span> { method = <span class="st">&quot;POST&quot;</span>, action = <span class="st">&quot;/users/&quot;</span> }</span>
+<span id="153"><a href="#153" aria-hidden="true" tabindex="-1"></a>    [ <span class="bu">&lt;input&gt;</span> { name = <span class="st">&quot;username&quot;</span></span>
+<span id="154"><a href="#154" aria-hidden="true" tabindex="-1"></a>              , placeholder = <span class="st">&quot;Username&quot;</span></span>
+<span id="155"><a href="#155" aria-hidden="true" tabindex="-1"></a>              , title = <span class="st">&quot;ASCII characters (A-Z, a-z, 0-9) only - no spaces&quot;</span></span>
+<span id="156"><a href="#156" aria-hidden="true" tabindex="-1"></a>              , pattern = <span class="st">&quot;^[a-zA-Z0-9]+$&quot;</span></span>
+<span id="157"><a href="#157" aria-hidden="true" tabindex="-1"></a>              , required = <span class="st">&quot;true&quot;</span></span>
+<span id="158"><a href="#158" aria-hidden="true" tabindex="-1"></a>              , autofocus = <span class="st">&quot;true&quot;</span></span>
+<span id="159"><a href="#159" aria-hidden="true" tabindex="-1"></a>              }</span>
+<span id="160"><a href="#160" aria-hidden="true" tabindex="-1"></a>    , <span class="bu">&lt;input&gt;</span> { name = <span class="st">&quot;password&quot;</span>, placeholder = <span class="st">&quot;Password&quot;</span>, type = <span class="st">&quot;password&quot;</span>, required = <span class="st">&quot;true&quot;</span> }</span>
+<span id="161"><a href="#161" aria-hidden="true" tabindex="-1"></a>    , <span class="bu">&lt;input&gt;</span> { type = <span class="st">&quot;submit&quot;</span>, value = <span class="st">&quot;Create User&quot;</span> }</span>
+<span id="162"><a href="#162" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="163"><a href="#163" aria-hidden="true" tabindex="-1"></a></span>
+<span id="164"><a href="#164" aria-hidden="true" tabindex="-1"></a><span class="kw">serve</span> <span class="kw">get</span> /users/new =</span>
+<span id="165"><a href="#165" aria-hidden="true" tabindex="-1"></a>  template createUserForm</span>
+<span id="166"><a href="#166" aria-hidden="true" tabindex="-1"></a></span>
+<span id="167"><a href="#167" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="168"><a href="#168" aria-hidden="true" tabindex="-1"></a><span class="co">User creation includes validation checks:</span></span>
+<span id="169"><a href="#169" aria-hidden="true" tabindex="-1"></a></span>
+<span id="170"><a href="#170" aria-hidden="true" tabindex="-1"></a><span class="co">- Username is a reasonable length</span></span>
+<span id="171"><a href="#171" aria-hidden="true" tabindex="-1"></a><span class="co">- Username has not already been taken</span></span>
+<span id="172"><a href="#172" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="173"><a href="#173" aria-hidden="true" tabindex="-1"></a></span>
+<span id="174"><a href="#174" aria-hidden="true" tabindex="-1"></a><span class="kw">serve</span> <span class="kw">post</span> /users/ =</span>
+<span id="175"><a href="#175" aria-hidden="true" tabindex="-1"></a>  <span class="kw">fun</span> postData : { username : text, password : text } -&gt;</span>
+<span id="176"><a href="#176" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span><span class="va"> userExists</span> =</span>
+<span id="177"><a href="#177" aria-hidden="true" tabindex="-1"></a>      maybe (listHead (users <span class="kw">where</span> username = postData.username -&gt; 1)) false (<span class="kw">fun</span> _ -&gt; true)</span>
+<span id="178"><a href="#178" aria-hidden="true" tabindex="-1"></a>    <span class="kw">in</span></span>
+<span id="179"><a href="#179" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span><span class="va"> validUsername</span> =</span>
+<span id="180"><a href="#180" aria-hidden="true" tabindex="-1"></a>      regexpMatch <span class="st">&quot;^[a-zA-Z0-9]+$&quot;</span> postData.username <span class="kw">and</span></span>
+<span id="181"><a href="#181" aria-hidden="true" tabindex="-1"></a>      textLength postData.username &lt; 15</span>
+<span id="182"><a href="#182" aria-hidden="true" tabindex="-1"></a>    <span class="kw">in</span></span>
+<span id="183"><a href="#183" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span><span class="va"> validUser</span> =</span>
+<span id="184"><a href="#184" aria-hidden="true" tabindex="-1"></a>      validUsername <span class="kw">and</span></span>
+<span id="185"><a href="#185" aria-hidden="true" tabindex="-1"></a>      textLength postData.password &gt; 0 <span class="kw">and</span></span>
+<span id="186"><a href="#186" aria-hidden="true" tabindex="-1"></a>      not userExists</span>
+<span id="187"><a href="#187" aria-hidden="true" tabindex="-1"></a>    <span class="kw">in</span></span>
+<span id="188"><a href="#188" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span><span class="va"> createUser</span> =</span>
+<span id="189"><a href="#189" aria-hidden="true" tabindex="-1"></a>      genUUID <span class="kw">as</span><span class="va"> user_id</span> <span class="kw">then</span></span>
+<span id="190"><a href="#190" aria-hidden="true" tabindex="-1"></a>      <span class="kw">insert</span><span class="va"> users</span> { user_id, username = postData.username, password = hashPassword postData.password } <span class="kw">then</span></span>
+<span id="191"><a href="#191" aria-hidden="true" tabindex="-1"></a>      genUUID <span class="kw">as</span><span class="va"> session_id</span> <span class="kw">then</span></span>
+<span id="192"><a href="#192" aria-hidden="true" tabindex="-1"></a>      <span class="kw">insert</span><span class="va"> sessions</span> { session_id, user_id } <span class="kw">then</span></span>
+<span id="193"><a href="#193" aria-hidden="true" tabindex="-1"></a>      addCookie (redirect <span class="st">&quot;/&quot;</span>) <span class="st">&quot;forumSessionId&quot;</span> session_id</span>
+<span id="194"><a href="#194" aria-hidden="true" tabindex="-1"></a>    <span class="kw">in</span></span>
+<span id="195"><a href="#195" aria-hidden="true" tabindex="-1"></a>    <span class="kw">if</span> validUser</span>
+<span id="196"><a href="#196" aria-hidden="true" tabindex="-1"></a>      <span class="kw">then</span> createUser</span>
+<span id="197"><a href="#197" aria-hidden="true" tabindex="-1"></a>      <span class="kw">else</span></span>
+<span id="198"><a href="#198" aria-hidden="true" tabindex="-1"></a>        <span class="kw">let</span><span class="va"> errors</span> =</span>
+<span id="199"><a href="#199" aria-hidden="true" tabindex="-1"></a>          <span class="kw">if</span> userExists</span>
+<span id="200"><a href="#200" aria-hidden="true" tabindex="-1"></a>          <span class="kw">then</span> <span class="bu">&lt;p&gt;</span> <span class="st">&quot;User Already Exists&quot;</span></span>
+<span id="201"><a href="#201" aria-hidden="true" tabindex="-1"></a>          <span class="kw">else</span> <span class="kw">if</span> not validUsername</span>
+<span id="202"><a href="#202" aria-hidden="true" tabindex="-1"></a>          <span class="kw">then</span> <span class="bu">&lt;p&gt;</span> <span class="st">&quot;Invalid username&quot;</span></span>
+<span id="203"><a href="#203" aria-hidden="true" tabindex="-1"></a>          <span class="kw">else</span> emptyHtml</span>
+<span id="204"><a href="#204" aria-hidden="true" tabindex="-1"></a>        <span class="kw">in</span></span>
+<span id="205"><a href="#205" aria-hidden="true" tabindex="-1"></a>        liftIO (template [ errors, createUserForm ] : response)</span>
+<span id="206"><a href="#206" aria-hidden="true" tabindex="-1"></a></span>
+<span id="207"><a href="#207" aria-hidden="true" tabindex="-1"></a></span>
+<span id="208"><a href="#208" aria-hidden="true" tabindex="-1"></a></span>
+<span id="209"><a href="#209" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="210"><a href="#210" aria-hidden="true" tabindex="-1"></a><span class="co">Session handling.</span></span>
+<span id="211"><a href="#211" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="212"><a href="#212" aria-hidden="true" tabindex="-1"></a></span>
+<span id="213"><a href="#213" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span><span class="va"> loginForm</span> =</span>
+<span id="214"><a href="#214" aria-hidden="true" tabindex="-1"></a>  <span class="bu">&lt;form&gt;</span> { method = <span class="st">&quot;POST&quot;</span>, action = <span class="st">&quot;/sessions/&quot;</span> }</span>
+<span id="215"><a href="#215" aria-hidden="true" tabindex="-1"></a>     [ <span class="bu">&lt;input&gt;</span> { name = <span class="st">&quot;username&quot;</span>, placeholder = <span class="st">&quot;Username&quot;</span>, required = <span class="st">&quot;true&quot;</span>, autofocus = <span class="st">&quot;true&quot;</span> }</span>
+<span id="216"><a href="#216" aria-hidden="true" tabindex="-1"></a>     , <span class="bu">&lt;input&gt;</span> { name = <span class="st">&quot;password&quot;</span>, placeholder = <span class="st">&quot;Password&quot;</span>, type = <span class="st">&quot;password&quot;</span>, required = <span class="st">&quot;true&quot;</span> }</span>
+<span id="217"><a href="#217" aria-hidden="true" tabindex="-1"></a>     , <span class="bu">&lt;input&gt;</span> { type = <span class="st">&quot;submit&quot;</span>, value = <span class="st">&quot;Log in&quot;</span> }</span>
+<span id="218"><a href="#218" aria-hidden="true" tabindex="-1"></a>     ]</span>
+<span id="219"><a href="#219" aria-hidden="true" tabindex="-1"></a></span>
+<span id="220"><a href="#220" aria-hidden="true" tabindex="-1"></a><span class="kw">serve</span> <span class="kw">get</span> /sessions/new =</span>
+<span id="221"><a href="#221" aria-hidden="true" tabindex="-1"></a>  template loginForm</span>
+<span id="222"><a href="#222" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="223"><a href="#223" aria-hidden="true" tabindex="-1"></a><span class="kw">serve</span> <span class="kw">post</span> /sessions/ =</span>
+<span id="224"><a href="#224" aria-hidden="true" tabindex="-1"></a>  <span class="kw">fun</span> postData : { username : text, password : text } -&gt;</span>
+<span id="225"><a href="#225" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span><span class="va"> userCreds</span> =</span>
+<span id="226"><a href="#226" aria-hidden="true" tabindex="-1"></a>      listHead (users <span class="kw">where</span> username = postData.username</span>
+<span id="227"><a href="#227" aria-hidden="true" tabindex="-1"></a>                      <span class="kw">select</span> { user_id, password } -&gt; { user_id, password })</span>
+<span id="228"><a href="#228" aria-hidden="true" tabindex="-1"></a>    <span class="kw">in</span></span>
+<span id="229"><a href="#229" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span><span class="va"> badLogin</span> =</span>
+<span id="230"><a href="#230" aria-hidden="true" tabindex="-1"></a>      template [<span class="bu">&lt;div&gt;</span> <span class="st">&quot;Login failed!&quot;</span>, loginForm] : response</span>
+<span id="231"><a href="#231" aria-hidden="true" tabindex="-1"></a>    <span class="kw">in</span></span>
+<span id="232"><a href="#232" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span><span class="va"> createSession</span> =</span>
+<span id="233"><a href="#233" aria-hidden="true" tabindex="-1"></a>      <span class="kw">fun</span> user_id -&gt;</span>
+<span id="234"><a href="#234" aria-hidden="true" tabindex="-1"></a>        randomBytes 20 <span class="kw">as</span><span class="va"> session_id</span> <span class="kw">then</span></span>
+<span id="235"><a href="#235" aria-hidden="true" tabindex="-1"></a>        <span class="kw">insert</span><span class="va"> sessions</span> { session_id, user_id } <span class="kw">then</span></span>
+<span id="236"><a href="#236" aria-hidden="true" tabindex="-1"></a>        addCookie (redirect <span class="st">&quot;/&quot;</span>) <span class="st">&quot;forumSessionId&quot;</span> session_id</span>
+<span id="237"><a href="#237" aria-hidden="true" tabindex="-1"></a>    <span class="kw">in</span></span>
+<span id="238"><a href="#238" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span><span class="va"> login</span> =</span>
+<span id="239"><a href="#239" aria-hidden="true" tabindex="-1"></a>      <span class="kw">fun</span> creds -&gt;</span>
+<span id="240"><a href="#240" aria-hidden="true" tabindex="-1"></a>        <span class="kw">if</span> validatePassword postData.password creds.password</span>
+<span id="241"><a href="#241" aria-hidden="true" tabindex="-1"></a>        <span class="kw">then</span> createSession creds.user_id</span>
+<span id="242"><a href="#242" aria-hidden="true" tabindex="-1"></a>        <span class="kw">else</span> liftIO badLogin</span>
+<span id="243"><a href="#243" aria-hidden="true" tabindex="-1"></a>    <span class="kw">in</span></span>
+<span id="244"><a href="#244" aria-hidden="true" tabindex="-1"></a>    maybe userCreds (liftIO badLogin) login</span>
+<span id="245"><a href="#245" aria-hidden="true" tabindex="-1"></a></span>
+<span id="246"><a href="#246" aria-hidden="true" tabindex="-1"></a><span class="kw">serve</span> <span class="kw">post</span> /sessions/<span class="kw">delete</span><span class="va"> =</span></span>
+<span id="247"><a href="#247" aria-hidden="true" tabindex="-1"></a><span class="va">  maybe</span> user</span>
+<span id="248"><a href="#248" aria-hidden="true" tabindex="-1"></a>    (liftIO (redirect <span class="st">&quot;/&quot;</span>))</span>
+<span id="249"><a href="#249" aria-hidden="true" tabindex="-1"></a>    (<span class="kw">fun</span> user -&gt; <span class="kw">delete</span><span class="va"> sessions</span> <span class="kw">where</span> user_id = user.user_id <span class="kw">then</span> redirect <span class="st">&quot;/&quot;</span>)</span>
+<span id="250"><a href="#250" aria-hidden="true" tabindex="-1"></a></span>
+<span id="251"><a href="#251" aria-hidden="true" tabindex="-1"></a></span>
+<span id="252"><a href="#252" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="253"><a href="#253" aria-hidden="true" tabindex="-1"></a><span class="co">Style for forums.</span></span>
+<span id="254"><a href="#254" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="255"><a href="#255" aria-hidden="true" tabindex="-1"></a></span>
+<span id="256"><a href="#256" aria-hidden="true" tabindex="-1"></a><span class="kw">serve</span> <span class="kw">get</span> /style.css =</span>
+<span id="257"><a href="#257" aria-hidden="true" tabindex="-1"></a>  file <span class="st">&quot;text/css&quot;</span> <span class="st">&quot;style.css&quot;</span></span></code></pre></div></main></body></html>
